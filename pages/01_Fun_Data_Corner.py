@@ -53,12 +53,10 @@ def plot_box(df):
     st.plotly_chart(fig, use_container_width=True)
 
 def plot_within_race(df):
-    # Buckets
     bins = list(range(1100,1601,50))
     labels = [f"{b}-{b+49}" for b in bins[:-1]]
     df['Score_Bucket'] = pd.cut(df['SAT_Adjusted'], bins=bins, labels=labels, right=False)
 
-    # Count & percent within each race
     counts = (
         df.groupby(['RaceNorm','Score_Bucket'])
           .size()
@@ -80,6 +78,35 @@ def plot_within_race(df):
     fig.update_layout(xaxis_tickangle=-45, legend_title_text="Race", yaxis_ticksuffix="%")
     st.plotly_chart(fig, use_container_width=True)
 
+def plot_ivy_gpa(df):
+    st.subheader("2. Ivy League GPA Distributions for Admitted Students")
+
+    ivy_leagues = ['Brown', 'Columbia', 'Cornell', 'Dartmouth', 'Harvard', 'Princeton', 'Upenn', 'Yale']
+
+    data = []
+    for school in ivy_leagues:
+        filtered = df[df['acceptances'].str.contains(school, case=False, na=False)]
+        gpas = filtered['GPA'].dropna()
+        for gpa in gpas:
+            data.append({'Ivy League School': school, 'GPA': gpa})
+
+    ivy_df = pd.DataFrame(data)
+
+    if ivy_df.empty:
+        st.write("No data available for Ivy League acceptances.")
+        return
+
+    fig = px.box(
+        ivy_df,
+        x='Ivy League School',
+        y='GPA',
+        title="GPA Distribution of Students Admitted to Ivy League Schools",
+        labels={"GPA": "GPA", "Ivy League School": "School"},
+        color='Ivy League School'
+    )
+    fig.update_layout(showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
+
 def main():
     st.title("🎲 Fun Data Corner")
     st.header("Within‑Race SAT Distribution (1100–1600)")
@@ -90,12 +117,10 @@ def main():
     I do want to note that since the data were taken from a subreddit dedicated to college results, there is a volunteer response bias in play that definitely overestimates all metrics for the typical student. Nevertheless, there aren't any better sources for this data that I could find, so we will have to roll with it!
     """)
 
-    # New label below intro
     st.subheader("1. Race and Standardized Test Scores")
 
     df = load_and_prepare_data()
 
-    # Collapsible widget for choosing visualization type
     with st.expander("▶️ Visualization Options", expanded=False):
         mode = st.radio(
             "Visualization type:",
@@ -109,62 +134,10 @@ def main():
         st.subheader("Percentage Histogram Within Each Race")
         plot_within_race(df)
 
+    # Ivy League GPA boxplot in its own expander
+    with st.expander("▶️ 2. Ivy League GPA Distributions for Admitted Students", expanded=False):
+        plot_ivy_gpa(df)
+
 if __name__=="__main__":
     main()
-
-# Graph 2
-
-def ivy_gpa_distribution(df):
-    st.header("2. GPA Distribution of Admitted Students by Ivy League School")
-    
-    st.write("""
-    This visualization shows the range of GPAs for admitted students to each Ivy League school,
-    based on the data available. Select the plot type below.
-    """)
-
-    plot_type = st.radio("Choose visualization type:", ["Boxplot", "Violin plot"], horizontal=True)
-
-    # Ivy League schools mapping to match in 'acceptances' column
-    ivy_schools = {
-        "Brown": "Brown",
-        "Columbia": "Columbia",
-        "Cornell": "Cornell",
-        "Dartmouth": "Dartmouth",
-        "Harvard": "Harvard",
-        "UPenn": "Penn",
-        "Princeton": "Princeton",
-        "Yale": "Yale"
-    }
-
-    # Prepare data for plot
-    data = []
-    for short_name, search_name in ivy_schools.items():
-        # Filter rows where 'acceptances' contains search_name (case insensitive)
-        mask = df['acceptances'].str.contains(search_name, case=False, na=False)
-        gpas = df.loc[mask, 'GPA'].dropna()
-
-        for gpa in gpas:
-            data.append({"Ivy School": short_name, "GPA": gpa})
-
-    plot_df = pd.DataFrame(data)
-
-    if plot_df.empty:
-        st.warning("No data available for Ivy League acceptances with GPA.")
-        return
-
-    if plot_type == "Boxplot":
-        fig = px.box(plot_df, x="Ivy School", y="GPA", points="all",
-                     labels={"GPA": "GPA", "Ivy School": "Ivy League School"},
-                     title="GPA Distribution of Admitted Students by Ivy League School")
-    else:
-        fig = px.violin(plot_df, x="Ivy School", y="GPA", box=True, points="all",
-                        labels={"GPA": "GPA", "Ivy School": "Ivy League School"},
-                        title="GPA Distribution of Admitted Students by Ivy League School")
-
-    st.plotly_chart(fig, use_container_width=True)
-
-
-# Example use in your Streamlit app:
-# df = pd.read_csv("master_data.csv")
-# ivy_gpa_distribution(df)
 
