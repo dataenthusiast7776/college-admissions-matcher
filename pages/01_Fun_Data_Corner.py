@@ -33,64 +33,73 @@ def load_and_prepare_data():
     # Keep only our four groups & scores in [1100,1600]
     df = df.dropna(subset=['EthnicityNorm', 'SAT_Adjusted'])
     df = df[(df['SAT_Adjusted'] >= 1100) & (df['SAT_Adjusted'] <= 1600)]
-
-    # Create 50‑point buckets
-    bins = list(range(1100, 1601, 50))
-    labels = [f"{b}-{b+49}" for b in bins[:-1]]
-    df['Score_Bucket'] = pd.cut(
-        df['SAT_Adjusted'], bins=bins, labels=labels, right=False
-    )
-
-    # Drop any rows that fall outside (just in case)
-    df = df.dropna(subset=['Score_Bucket'])
     return df
 
-def plot_within_race_percentages(df):
-    # Count per ethnicity & bucket
+def plot_box(df):
+    fig = px.box(
+        df, 
+        x='EthnicityNorm', 
+        y='SAT_Adjusted', 
+        color='EthnicityNorm',
+        labels={'EthnicityNorm':'Ethnicity','SAT_Adjusted':'SAT Score'},
+        title="SAT Score Distribution by Ethnicity (1100–1600)",
+        color_discrete_map={
+            "Asian":"#636EFA","White":"#EF553B",
+            "Black":"#00CC96","Hispanic":"#AB63FA"
+        }
+    )
+    fig.update_traces(boxmean=True)  # shows mean as a point
+    fig.update_layout(showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
+
+def plot_within_race(df):
+    # prepare buckets
+    bins = list(range(1100, 1601, 50))
+    labels = [f"{b}-{b+49}" for b in bins[:-1]]
+    df['Score_Bucket'] = pd.cut(df['SAT_Adjusted'], bins=bins, labels=labels, right=False)
+
+    # count & percent by race
     counts = (
         df.groupby(['EthnicityNorm','Score_Bucket'])
           .size()
           .reset_index(name='Count')
     )
-    # Total per ethnicity
     counts['TotalByRace'] = counts.groupby('EthnicityNorm')['Count'].transform('sum')
-    # Percent of that ethnicity in each bucket
     counts['Percent'] = counts['Count'] / counts['TotalByRace'] * 100
 
-    # Plot grouped bars: x=bucket, y=percent, color=race
     fig = px.bar(
         counts,
         x='Score_Bucket',
         y='Percent',
         color='EthnicityNorm',
         barmode='group',
-        category_orders={"Score_Bucket": counts['Score_Bucket'].cat.categories},
-        labels={
-            'Score_Bucket': 'SAT Score Range',
-            'Percent': '% within Ethnicity',
-            'EthnicityNorm': 'Ethnicity'
-        },
+        category_orders={'Score_Bucket': labels},
+        labels={'Score_Bucket':'SAT Score Range','Percent':'% within Ethnicity','EthnicityNorm':'Ethnicity'},
         title="Within‑Race SAT Distribution (1100–1600)"
     )
-    fig.update_layout(
-        xaxis_tickangle=-45,
-        bargap=0.15,
-        bargroupgap=0.1,
-        legend_title_text="Ethnicity",
-        yaxis_ticksuffix="%"
-    )
+    fig.update_layout(xaxis_tickangle=-45, legend_title_text="Ethnicity", yaxis_ticksuffix="%")
     st.plotly_chart(fig, use_container_width=True)
 
 def main():
     st.title("🎲 Fun Data Corner")
-    st.header("Within‑Race SAT Distribution (1100–1600)")
     st.write(
-        "For each ethnicity, this chart shows what percentage of its students "
-        "fall into each 50‑point SAT range between 1100 and 1600."
+        "Explore SAT score distributions (1100–1600) by ethnicity.  "
+        "Choose your preferred visualization below."
     )
 
     df = load_and_prepare_data()
-    plot_within_race_percentages(df)
+
+    mode = st.radio(
+        "Visualization type:",
+        ["Box‑Plot Distribution", "Within‑Race Percentage Histogram"]
+    )
+
+    if mode == "Box‑Plot Distribution":
+        st.subheader("Box‑Plot of SAT Scores by Ethnicity")
+        plot_box(df)
+    else:
+        st.subheader("Percentage Histogram Within Each Ethnicity")
+        plot_within_race(df)
 
 if __name__ == "__main__":
     main()
