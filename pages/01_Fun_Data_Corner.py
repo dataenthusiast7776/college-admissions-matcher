@@ -8,7 +8,7 @@ st.set_page_config(page_title="Fun Data Corner", layout="wide")
 def load_and_prepare_data():
     df = pd.read_csv("master_data.csv")
 
-    # Normalize into four racial groups
+    # Normalize race
     def norm_race(e):
         if pd.isna(e): return None
         e = e.lower()
@@ -20,7 +20,7 @@ def load_and_prepare_data():
 
     df['RaceNorm'] = df['Ethnicity'].apply(norm_race)
 
-    # Unified SAT score (SAT or ACT*45)
+    # Unified SAT/ACT score
     df['SAT_Adjusted'] = df.apply(
         lambda r: r['SAT_Score']
                   if pd.notna(r['SAT_Score'])
@@ -28,15 +28,12 @@ def load_and_prepare_data():
         axis=1
     )
 
-    # Keep only chosen races & scores 1100–1600
     df = df.dropna(subset=['RaceNorm','SAT_Adjusted'])
     df = df[(df['SAT_Adjusted'] >= 1100) & (df['SAT_Adjusted'] <= 1600)]
 
-    # GPA and acceptances for Ivy League scatter plots
     df_gpa = df[['GPA', 'acceptances', 'SAT_Score', 'ACT_Score']].copy()
     df_gpa = df_gpa.dropna(subset=['GPA', 'acceptances'])
-    
-    # Calculate combined SAT/ACT score again for scatter plot, to be safe
+
     df_gpa['SAT_Adjusted'] = df_gpa.apply(
         lambda r: r['SAT_Score']
                   if pd.notna(r['SAT_Score'])
@@ -44,7 +41,7 @@ def load_and_prepare_data():
         axis=1
     )
     df_gpa = df_gpa.dropna(subset=['SAT_Adjusted'])
-    
+
     return df, df_gpa
 
 def plot_box(df):
@@ -65,12 +62,10 @@ def plot_box(df):
     st.plotly_chart(fig, use_container_width=True)
 
 def plot_within_race(df):
-    # Buckets
     bins = list(range(1100,1601,50))
     labels = [f"{b}-{b+49}" for b in bins[:-1]]
     df['Score_Bucket'] = pd.cut(df['SAT_Adjusted'], bins=bins, labels=labels, right=False)
 
-    # Count & percent within each race
     counts = (
         df.groupby(['RaceNorm','Score_Bucket'])
           .size()
@@ -112,14 +107,32 @@ def plot_ivy_scatter_single(df_school, school_name):
         x='GPA',
         y='SAT_ACT_Score',
         labels={
-            'GPA': 'GPA (3.0 - 4.0 scale)',
-            'SAT_ACT_Score': 'Unified SAT/ACT Score'
+            'GPA': 'GPA (2.5 - 4.0)',
+            'SAT_ACT_Score': 'SAT/ACT Score (Unified)'
         },
         title=f"GPA vs. SAT/ACT Scores of Students Accepted to {school_name}",
         color_discrete_sequence=["#636EFA"]
     )
-    fig.update_xaxes(range=[3.0, 4.0])
-    fig.update_yaxes(range=[1100, 1600])
+
+    fig.update_xaxes(
+        range=[2.5, 4.0],
+        tick0=2.5,
+        dtick=0.05,
+        showgrid=True
+    )
+    fig.update_yaxes(
+        range=[1100, 1600],
+        tick0=1100,
+        dtick=10,
+        showgrid=True
+    )
+    
+    fig.update_layout(
+        plot_bgcolor='white',
+        xaxis=dict(showline=True, linecolor='black'),
+        yaxis=dict(showline=True, linecolor='black')
+    )
+    
     st.plotly_chart(fig, use_container_width=True)
 
 def main():
@@ -130,8 +143,7 @@ def main():
 
     I do want to note that since the data were taken from a subreddit dedicated to college results, there is a volunteer response bias in play that definitely overestimates all metrics for the typical student. Nevertheless, there aren't any better sources for this data that I could find, so we will have to roll with it!
     """)
-    
-    # 1. SAT Scores Visualization
+
     st.subheader("1. Race and Standardized Test Scores")
     df, df_gpa = load_and_prepare_data()
 
@@ -147,20 +159,9 @@ def main():
     else:
         st.subheader("Percentage Histogram Within Each Race")
         plot_within_race(df)
-        
-    # 2. Ivy League GPA vs SAT/ACT Separate Scatter Plots
-    st.subheader("2. Ivy League GPA vs. SAT/ACT Scores of Accepted Students")
 
-    ivy_schools = [
-        'Brown',
-        'Columbia',
-        'Cornell',
-        'Dartmouth',
-        'Harvard',
-        'Penn',
-        'Princeton',
-        'Yale'
-    ]
+    st.subheader("2. Ivy League GPA vs. SAT/ACT Scores of Accepted Students")
+    ivy_schools = ['Brown', 'Columbia', 'Cornell', 'Dartmouth', 'Harvard', 'Penn', 'Princeton', 'Yale']
     
     selected_school = st.selectbox("Select Ivy League School:", ivy_schools)
     df_school = get_ivy_school_data(df_gpa, selected_school)
