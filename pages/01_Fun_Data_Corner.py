@@ -4,7 +4,7 @@ import plotly.express as px
 
 @st.cache_data
 def load_and_prepare_data():
-    df = pd.read_csv("master_data_with_ECs.csv")
+    df = pd.read_csv("master_data.csv")
     
     # Normalize ethnicity to 4 main groups + drop others & unknown
     def norm_ethnicity(e):
