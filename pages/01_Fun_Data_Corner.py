@@ -84,8 +84,9 @@ def main():
     st.title("🎲 Fun Data Corner")
     st.header("Within‑Race SAT Distribution (1100–1600)")
 
+    # Intro paragraph right after header
     st.markdown("""
-    Hello fellow data nerds! Here you can find numerous different angles of data visualization from the dataset I am using, updated as my dataset improves.
+    Hello fellow data nerd! Here you can find numerous different angles of data visualization from the dataset I am using, updated as my dataset improves.
 
     I do want to note that since the data were taken from a subreddit dedicated to college results, there is a volunteer response bias in play that definitely overestimates all metrics for the typical student. Nevertheless, there aren't any better sources for this data that I could find, so we will have to roll with it!
     """)
@@ -98,8 +99,9 @@ def main():
     )
 
     if mode == "Box‑Plot Distribution":
-        st.subheader("Box‑Plot of SAT Scores by Race")
-        plot_box(df)
+        # Condensed into a collapsible expander
+        with st.expander("▶️ Box‑Plot of SAT Scores by Race", expanded=False):
+            plot_box(df)
     else:
         st.subheader("Percentage Histogram Within Each Race")
         plot_within_race(df)
