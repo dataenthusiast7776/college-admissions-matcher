@@ -32,7 +32,7 @@ def load_and_prepare_data():
     df = df.dropna(subset=['RaceNorm','SAT_Adjusted'])
     df = df[(df['SAT_Adjusted'] >= 1100) & (df['SAT_Adjusted'] <= 1600)]
 
-    # GPA and acceptances for Ivy League scatter plot
+    # GPA and acceptances for Ivy League scatter plots
     df_gpa = df[['GPA', 'acceptances', 'SAT_Score', 'ACT_Score']].copy()
     df_gpa = df_gpa.dropna(subset=['GPA', 'acceptances'])
     
@@ -92,44 +92,31 @@ def plot_within_race(df):
     fig.update_layout(xaxis_tickangle=-45, legend_title_text="Race", yaxis_ticksuffix="%")
     st.plotly_chart(fig, use_container_width=True)
 
-def plot_ivy_scatter(df_gpa):
-    ivy_leagues = {
-        'Brown': 'Brown',
-        'Columbia': 'Columbia',
-        'Cornell': 'Cornell',
-        'Dartmouth': 'Dartmouth',
-        'Harvard': 'Harvard',
-        'Penn': 'Upenn',
-        'Princeton': 'Princeton',
-        'Yale': 'Yale'
-    }
-    
+def get_ivy_school_data(df_gpa, school_name):
+    accepted = df_gpa[df_gpa['acceptances'].str.contains(school_name, case=False, na=False)]
     ivy_gpa_data = []
-    for school, display_name in ivy_leagues.items():
-        accepted = df_gpa[df_gpa['acceptances'].str.contains(school, case=False, na=False)]
-        for _, row in accepted.iterrows():
-            ivy_gpa_data.append({
-                'School': display_name,
-                'GPA': row['GPA'],
-                'SAT_ACT_Score': row['SAT_Adjusted']
-            })
-    
-    ivy_df = pd.DataFrame(ivy_gpa_data)
-    if ivy_df.empty:
-        st.write("No GPA and test score data found for Ivy League acceptances.")
+    for _, row in accepted.iterrows():
+        ivy_gpa_data.append({
+            'GPA': row['GPA'],
+            'SAT_ACT_Score': row['SAT_Adjusted']
+        })
+    return pd.DataFrame(ivy_gpa_data)
+
+def plot_ivy_scatter_single(df_school, school_name):
+    if df_school.empty:
+        st.write(f"No GPA and test score data found for {school_name} acceptances.")
         return
     
     fig = px.scatter(
-        ivy_df,
+        df_school,
         x='GPA',
         y='SAT_ACT_Score',
-        color='School',
         labels={
             'GPA': 'GPA (3.0 - 4.0 scale)',
             'SAT_ACT_Score': 'Unified SAT/ACT Score'
         },
-        title="GPA vs. SAT/ACT Scores of Students Accepted to Ivy League Schools",
-        color_discrete_sequence=px.colors.qualitative.Safe
+        title=f"GPA vs. SAT/ACT Scores of Students Accepted to {school_name}",
+        color_discrete_sequence=["#636EFA"]
     )
     fig.update_xaxes(range=[3.0, 4.0])
     fig.update_yaxes(range=[1100, 1600])
@@ -161,10 +148,23 @@ def main():
         st.subheader("Percentage Histogram Within Each Race")
         plot_within_race(df)
         
-    # 2. Ivy League GPA vs SAT/ACT Scatter Plot
+    # 2. Ivy League GPA vs SAT/ACT Separate Scatter Plots
     st.subheader("2. Ivy League GPA vs. SAT/ACT Scores of Accepted Students")
-    with st.expander("▶️ GPA vs. SAT/ACT Scatter Plot", expanded=True):
-        plot_ivy_scatter(df_gpa)
+
+    ivy_schools = [
+        'Brown',
+        'Columbia',
+        'Cornell',
+        'Dartmouth',
+        'Harvard',
+        'Penn',
+        'Princeton',
+        'Yale'
+    ]
+    
+    selected_school = st.selectbox("Select Ivy League School:", ivy_schools)
+    df_school = get_ivy_school_data(df_gpa, selected_school)
+    plot_ivy_scatter_single(df_school, selected_school)
 
 if __name__=="__main__":
     main()
