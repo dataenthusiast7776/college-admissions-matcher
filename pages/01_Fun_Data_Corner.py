@@ -32,9 +32,18 @@ def load_and_prepare_data():
     df = df.dropna(subset=['RaceNorm','SAT_Adjusted'])
     df = df[(df['SAT_Adjusted'] >= 1100) & (df['SAT_Adjusted'] <= 1600)]
 
-    # Also load GPA and acceptances info for second graph
-    df_gpa = df[['GPA', 'acceptances']].copy()
+    # GPA and acceptances for Ivy League scatter plot
+    df_gpa = df[['GPA', 'acceptances', 'SAT_Score', 'ACT_Score']].copy()
     df_gpa = df_gpa.dropna(subset=['GPA', 'acceptances'])
+    
+    # Calculate combined SAT/ACT score again for scatter plot, to be safe
+    df_gpa['SAT_Adjusted'] = df_gpa.apply(
+        lambda r: r['SAT_Score']
+                  if pd.notna(r['SAT_Score'])
+                  else (r['ACT_Score'] * 45 if pd.notna(r['ACT_Score']) else None),
+        axis=1
+    )
+    df_gpa = df_gpa.dropna(subset=['SAT_Adjusted'])
     
     return df, df_gpa
 
@@ -83,7 +92,7 @@ def plot_within_race(df):
     fig.update_layout(xaxis_tickangle=-45, legend_title_text="Race", yaxis_ticksuffix="%")
     st.plotly_chart(fig, use_container_width=True)
 
-def plot_ivy_gpa_violin(df_gpa):
+def plot_ivy_scatter(df_gpa):
     ivy_leagues = {
         'Brown': 'Brown',
         'Columbia': 'Columbia',
@@ -98,27 +107,32 @@ def plot_ivy_gpa_violin(df_gpa):
     ivy_gpa_data = []
     for school, display_name in ivy_leagues.items():
         accepted = df_gpa[df_gpa['acceptances'].str.contains(school, case=False, na=False)]
-        for gpa in accepted['GPA']:
-            ivy_gpa_data.append({'School': display_name, 'GPA': gpa})
+        for _, row in accepted.iterrows():
+            ivy_gpa_data.append({
+                'School': display_name,
+                'GPA': row['GPA'],
+                'SAT_ACT_Score': row['SAT_Adjusted']
+            })
     
     ivy_df = pd.DataFrame(ivy_gpa_data)
     if ivy_df.empty:
-        st.write("No GPA data found for Ivy League acceptances.")
+        st.write("No GPA and test score data found for Ivy League acceptances.")
         return
     
-    fig = px.violin(
+    fig = px.scatter(
         ivy_df,
-        x='School',
-        y='GPA',
+        x='GPA',
+        y='SAT_ACT_Score',
         color='School',
-        box=True,  # Show boxplot inside violin
-        points='all',  # Show all points jittered
-        labels={'School': 'Ivy League School', 'GPA': 'GPA'},
-        title="GPA Distribution of Students Accepted to Ivy League Schools (Violin Plot)",
+        labels={
+            'GPA': 'GPA (3.0 - 4.0 scale)',
+            'SAT_ACT_Score': 'Unified SAT/ACT Score'
+        },
+        title="GPA vs. SAT/ACT Scores of Students Accepted to Ivy League Schools",
         color_discrete_sequence=px.colors.qualitative.Safe
     )
-    fig.update_yaxes(range=[3.0, 4.0])
-    fig.update_layout(showlegend=False)
+    fig.update_xaxes(range=[3.0, 4.0])
+    fig.update_yaxes(range=[1100, 1600])
     st.plotly_chart(fig, use_container_width=True)
 
 def main():
@@ -147,10 +161,10 @@ def main():
         st.subheader("Percentage Histogram Within Each Race")
         plot_within_race(df)
         
-    # 2. Ivy League GPA Distribution Visualization
-    st.subheader("2. Ivy League GPA Distribution of Accepted Students")
-    with st.expander("▶️ Ivy League GPA Violin Plot", expanded=True):
-        plot_ivy_gpa_violin(df_gpa)
+    # 2. Ivy League GPA vs SAT/ACT Scatter Plot
+    st.subheader("2. Ivy League GPA vs. SAT/ACT Scores of Accepted Students")
+    with st.expander("▶️ GPA vs. SAT/ACT Scatter Plot", expanded=True):
+        plot_ivy_scatter(df_gpa)
 
 if __name__=="__main__":
     main()
