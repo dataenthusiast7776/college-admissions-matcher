@@ -111,3 +111,60 @@ def main():
 
 if __name__=="__main__":
     main()
+
+# Graph 2
+
+def ivy_gpa_distribution(df):
+    st.header("2. GPA Distribution of Admitted Students by Ivy League School")
+    
+    st.write("""
+    This visualization shows the range of GPAs for admitted students to each Ivy League school,
+    based on the data available. Select the plot type below.
+    """)
+
+    plot_type = st.radio("Choose visualization type:", ["Boxplot", "Violin plot"], horizontal=True)
+
+    # Ivy League schools mapping to match in 'acceptances' column
+    ivy_schools = {
+        "Brown": "Brown",
+        "Columbia": "Columbia",
+        "Cornell": "Cornell",
+        "Dartmouth": "Dartmouth",
+        "Harvard": "Harvard",
+        "UPenn": "Penn",
+        "Princeton": "Princeton",
+        "Yale": "Yale"
+    }
+
+    # Prepare data for plot
+    data = []
+    for short_name, search_name in ivy_schools.items():
+        # Filter rows where 'acceptances' contains search_name (case insensitive)
+        mask = df['acceptances'].str.contains(search_name, case=False, na=False)
+        gpas = df.loc[mask, 'GPA'].dropna()
+
+        for gpa in gpas:
+            data.append({"Ivy School": short_name, "GPA": gpa})
+
+    plot_df = pd.DataFrame(data)
+
+    if plot_df.empty:
+        st.warning("No data available for Ivy League acceptances with GPA.")
+        return
+
+    if plot_type == "Boxplot":
+        fig = px.box(plot_df, x="Ivy School", y="GPA", points="all",
+                     labels={"GPA": "GPA", "Ivy School": "Ivy League School"},
+                     title="GPA Distribution of Admitted Students by Ivy League School")
+    else:
+        fig = px.violin(plot_df, x="Ivy School", y="GPA", box=True, points="all",
+                        labels={"GPA": "GPA", "Ivy School": "Ivy League School"},
+                        title="GPA Distribution of Admitted Students by Ivy League School")
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# Example use in your Streamlit app:
+# df = pd.read_csv("master_data.csv")
+# ivy_gpa_distribution(df)
+
