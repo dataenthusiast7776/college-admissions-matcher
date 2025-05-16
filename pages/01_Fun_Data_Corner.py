@@ -85,7 +85,7 @@ def main():
     st.header("Within‑Race SAT Distribution (1100–1600)")
 
     st.markdown("""
-    Hello fellow data nerd! Here you can find numerous different angles of data visualization from the dataset I am using, updated as my dataset improves.
+    Hello fellow data nerds! Here you can find numerous different angles of data visualization from the dataset I am using, updated as my dataset improves.
 
     I do want to note that since the data were taken from a subreddit dedicated to college results, there is a volunteer response bias in play that definitely overestimates all metrics for the typical student. Nevertheless, there aren't any better sources for this data that I could find, so we will have to roll with it!
     """)
