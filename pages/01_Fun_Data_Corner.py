@@ -8,7 +8,7 @@ st.set_page_config(page_title="Fun Data Corner", layout="wide")
 def load_and_prepare_data():
     df = pd.read_csv("master_data.csv")
 
-    # Normalize race
+    # Normalize into four racial groups
     def norm_race(e):
         if pd.isna(e): return None
         e = e.lower()
@@ -20,7 +20,7 @@ def load_and_prepare_data():
 
     df['RaceNorm'] = df['Ethnicity'].apply(norm_race)
 
-    # Unified SAT/ACT score
+    # Unified SAT score (SAT or ACT*45)
     df['SAT_Adjusted'] = df.apply(
         lambda r: r['SAT_Score']
                   if pd.notna(r['SAT_Score'])
@@ -28,21 +28,10 @@ def load_and_prepare_data():
         axis=1
     )
 
+    # Keep only chosen races & scores 1100–1600
     df = df.dropna(subset=['RaceNorm','SAT_Adjusted'])
     df = df[(df['SAT_Adjusted'] >= 1100) & (df['SAT_Adjusted'] <= 1600)]
-
-    df_gpa = df[['GPA', 'acceptances', 'SAT_Score', 'ACT_Score']].copy()
-    df_gpa = df_gpa.dropna(subset=['GPA', 'acceptances'])
-
-    df_gpa['SAT_Adjusted'] = df_gpa.apply(
-        lambda r: r['SAT_Score']
-                  if pd.notna(r['SAT_Score'])
-                  else (r['ACT_Score'] * 45 if pd.notna(r['ACT_Score']) else None),
-        axis=1
-    )
-    df_gpa = df_gpa.dropna(subset=['SAT_Adjusted'])
-
-    return df, df_gpa
+    return df
 
 def plot_box(df):
     fig = px.box(
@@ -84,88 +73,88 @@ def plot_within_race(df):
         labels={'Score_Bucket':'SAT Score Range','Percent':'% within Race','RaceNorm':'Race'},
         title="Within‑Race SAT Distribution (1100–1600)"
     )
-    fig.update_layout(xaxis_tickangle=-45, legend_title_text="Race", yaxis_ticksuffix="%")
+    fig.update_layout(
+        xaxis_tickangle=-45, 
+        legend_title_text="Race", 
+        yaxis_ticksuffix="%", 
+        plot_bgcolor='rgb(17,17,17)',
+        paper_bgcolor='rgb(17,17,17)',
+        font_color='white'
+    )
     st.plotly_chart(fig, use_container_width=True)
 
-def get_ivy_school_data(df_gpa, school_name):
-    accepted = df_gpa[df_gpa['acceptances'].str.contains(school_name, case=False, na=False)]
-    ivy_gpa_data = []
-    for _, row in accepted.iterrows():
-        ivy_gpa_data.append({
-            'GPA': row['GPA'],
-            'SAT_ACT_Score': row['SAT_Adjusted']
-        })
-    return pd.DataFrame(ivy_gpa_data)
+def plot_ivy_scatter(df_raw):
+    ivies = ["Harvard", "Yale", "Princeton", "Columbia", "Brown", "Dartmouth", "Cornell", "Upenn"]
 
-def plot_ivy_scatter_single(df_school, school_name):
-    if df_school.empty:
-        st.write(f"No GPA and test score data found for {school_name} acceptances.")
-        return
-    
+    selected = st.selectbox("Select Ivy League School:", ivies)
+
+    df = df_raw[df_raw['acceptances'].str.contains(selected, case=False, na=False)]
+    df = df.dropna(subset=['GPA', 'SAT_Score', 'ACT_Score'])
+
+    df['SAT_Adjusted'] = df.apply(
+        lambda r: r['SAT_Score']
+        if pd.notna(r['SAT_Score'])
+        else (r['ACT_Score'] * 45 if pd.notna(r['ACT_Score']) else None),
+        axis=1
+    )
+    df = df.dropna(subset=['SAT_Adjusted', 'GPA', 'url'])
+
     fig = px.scatter(
-        df_school,
+        df,
         x='GPA',
-        y='SAT_ACT_Score',
-        labels={
-            'GPA': 'GPA (2.5 - 4.0)',
-            'SAT_ACT_Score': 'SAT/ACT Score (Unified)'
-        },
-        title=f"GPA vs. SAT/ACT Scores of Students Accepted to {school_name}",
-        color_discrete_sequence=["#636EFA"]
+        y='SAT_Adjusted',
+        hover_data=['url'],
+        title=f"GPA vs SAT/ACT (converted) — {selected}",
+        labels={'GPA':'GPA','SAT_Adjusted':'SAT or ACT*45'},
+        template='plotly_dark'
     )
 
-    fig.update_xaxes(
-        range=[2.5, 4.0],
-        tick0=2.5,
-        dtick=0.05,
-        showgrid=True
+    fig.update_traces(
+        marker=dict(size=8, line=dict(width=1, color='DarkSlateGrey')),
+        customdata=df[['url']],
+        hovertemplate="<b>GPA:</b> %{x}<br><b>SAT*:</b> %{y}<br><extra></extra><br><a href='%{customdata[0]}'>Reddit Link</a>"
     )
-    fig.update_yaxes(
-        range=[1100, 1600],
-        tick0=1100,
-        dtick=10,
-        showgrid=True
-    )
-    
+
     fig.update_layout(
-        plot_bgcolor='white',
-        xaxis=dict(showline=True, linecolor='black'),
-        yaxis=dict(showline=True, linecolor='black')
+        xaxis=dict(range=[2.5, 4.0], dtick=0.05, gridcolor='gray'),
+        yaxis=dict(range=[1100, 1600], dtick=10, gridcolor='gray'),
+        plot_bgcolor='rgb(17,17,17)',
+        paper_bgcolor='rgb(17,17,17)',
+        font_color='white'
     )
-    
     st.plotly_chart(fig, use_container_width=True)
 
 def main():
     st.title("🎲 Fun Data Corner")
-    
+    st.header("Within‑Race SAT Distribution (1100–1600)")
+
     st.markdown("""
     Hello fellow data nerds! Here you can find numerous different angles of data visualization from the dataset I am using, updated as my dataset improves.
 
     I do want to note that since the data were taken from a subreddit dedicated to college results, there is a volunteer response bias in play that definitely overestimates all metrics for the typical student. Nevertheless, there aren't any better sources for this data that I could find, so we will have to roll with it!
     """)
 
+    # Section 1: Race + SAT
     st.subheader("1. Race and Standardized Test Scores")
-    df, df_gpa = load_and_prepare_data()
+    df = load_and_prepare_data()
 
-    with st.expander("▶️ SAT Visualization Options", expanded=False):
-        sat_mode = st.radio(
+    with st.expander("▶️ Visualization Options", expanded=False):
+        mode = st.radio(
             "Visualization type:",
             ["Box‑Plot Distribution", "Within‑Race Percentage Histogram"]
         )
 
-    if sat_mode == "Box‑Plot Distribution":
+    if mode == "Box‑Plot Distribution":
         with st.expander("▶️ Box‑Plot of SAT Scores by Race", expanded=False):
             plot_box(df)
     else:
         st.subheader("Percentage Histogram Within Each Race")
         plot_within_race(df)
 
-    st.subheader("2. Ivy League GPA vs. SAT/ACT Scores of Accepted Students")
-    ivy_schools = ['Brown', 'Columbia', 'Cornell', 'Dartmouth', 'Harvard', 'Penn', 'Princeton', 'Yale']
-    
-    selected_school = st.selectbox("Select Ivy League School:", ivy_schools)
-    df_school = get_ivy_school_data(df_gpa, selected_school)
-    plot_ivy_scatter_single(df_school, selected_school)
+    # Section 2: Ivy League GPA vs SAT
+    st.subheader("2. GPA vs Standardized Test Score (Ivy League Acceptances)")
+    raw_df = pd.read_csv("master_data.csv")
+    plot_ivy_scatter(raw_df)
 
 if __name__=="__main__":
     main()
