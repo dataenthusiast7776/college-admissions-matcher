@@ -84,7 +84,6 @@ def main():
     st.title("🎲 Fun Data Corner")
     st.header("Within‑Race SAT Distribution (1100–1600)")
 
-    # Intro paragraph right after header
     st.markdown("""
     Hello fellow data nerds! Here you can find numerous different angles of data visualization from the dataset I am using, updated as my dataset improves.
 
@@ -93,13 +92,14 @@ def main():
 
     df = load_and_prepare_data()
 
-    mode = st.radio(
-        "Visualization type:",
-        ["Box‑Plot Distribution", "Within‑Race Percentage Histogram"]
-    )
+    # Collapsible widget for choosing visualization type
+    with st.expander("▶️ Visualization Options", expanded=False):
+        mode = st.radio(
+            "Visualization type:",
+            ["Box‑Plot Distribution", "Within‑Race Percentage Histogram"]
+        )
 
     if mode == "Box‑Plot Distribution":
-        # Condensed into a collapsible expander
         with st.expander("▶️ Box‑Plot of SAT Scores by Race", expanded=False):
             plot_box(df)
     else:
