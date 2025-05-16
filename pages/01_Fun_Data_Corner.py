@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import numpy as np
 
 st.set_page_config(page_title="Fun Data Corner", layout="wide")
 
@@ -32,98 +31,127 @@ def load_and_prepare_data():
     # Keep only chosen races & scores 1100–1600
     df = df.dropna(subset=['RaceNorm','SAT_Adjusted'])
     df = df[(df['SAT_Adjusted'] >= 1100) & (df['SAT_Adjusted'] <= 1600)]
-    return df
 
-def plot_strip(df):
-    ivy_schools = {
-        "Brown": "brown",
-        "Columbia": "purple",
-        "Cornell": "orange",
-        "Dartmouth": "green",
-        "Harvard": "red",
-        "Penn": "blue",
-        "Princeton": "black",
-        "Yale": "gold"
+    # Also load GPA and acceptances info for second graph
+    df_gpa = df[['GPA', 'acceptances']].copy()
+    df_gpa = df_gpa.dropna(subset=['GPA', 'acceptances'])
+    
+    return df, df_gpa
+
+def plot_box(df):
+    fig = px.box(
+        df,
+        x='RaceNorm',
+        y='SAT_Adjusted',
+        color='RaceNorm',
+        labels={'RaceNorm':'Race','SAT_Adjusted':'SAT Score'},
+        title="SAT Score Distribution by Race (1100–1600)",
+        color_discrete_map={
+            "Asian":"#636EFA","White":"#EF553B",
+            "Black":"#00CC96","Hispanic":"#AB63FA"
+        }
+    )
+    fig.update_traces(boxmean=True)
+    fig.update_layout(showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
+
+def plot_within_race(df):
+    # Buckets
+    bins = list(range(1100,1601,50))
+    labels = [f"{b}-{b+49}" for b in bins[:-1]]
+    df['Score_Bucket'] = pd.cut(df['SAT_Adjusted'], bins=bins, labels=labels, right=False)
+
+    # Count & percent within each race
+    counts = (
+        df.groupby(['RaceNorm','Score_Bucket'])
+          .size()
+          .reset_index(name='Count')
+    )
+    counts['TotalByRace'] = counts.groupby('RaceNorm')['Count'].transform('sum')
+    counts['Percent'] = counts['Count'] / counts['TotalByRace'] * 100
+
+    fig = px.bar(
+        counts,
+        x='Score_Bucket',
+        y='Percent',
+        color='RaceNorm',
+        barmode='group',
+        category_orders={'Score_Bucket': labels},
+        labels={'Score_Bucket':'SAT Score Range','Percent':'% within Race','RaceNorm':'Race'},
+        title="Within‑Race SAT Distribution (1100–1600)"
+    )
+    fig.update_layout(xaxis_tickangle=-45, legend_title_text="Race", yaxis_ticksuffix="%")
+    st.plotly_chart(fig, use_container_width=True)
+
+def plot_ivy_gpa_strip(df_gpa):
+    ivy_leagues = {
+        'Brown': 'Brown',
+        'Columbia': 'Columbia',
+        'Cornell': 'Cornell',
+        'Dartmouth': 'Dartmouth',
+        'Harvard': 'Harvard',
+        'Penn': 'Upenn',
+        'Princeton': 'Princeton',
+        'Yale': 'Yale'
     }
-
-    # Filter admitted students per ivy and collect their GPA
-    records = []
-    for school in ivy_schools.keys():
-        admitted = df[df['acceptances'].str.contains(school, case=False, na=False)]
-        for gpa in admitted['GPA'].dropna():
-            records.append({'School': school, 'GPA': gpa})
-
-    df_ivy = pd.DataFrame(records)
-
-    # Add jitter on x axis for strip effect
-    jitter_strength = 0.1
-    x_vals = []
-    school_to_num = {school: i for i, school in enumerate(ivy_schools.keys())}
-    for school in df_ivy['School']:
-        base_pos = school_to_num[school]
-        jitter = np.random.uniform(-jitter_strength, jitter_strength)
-        x_vals.append(base_pos + jitter)
-    df_ivy['x_jitter'] = x_vals
-
-    fig = px.scatter(
-        df_ivy,
-        x='x_jitter',
+    
+    # Collect GPAs for admitted students per ivy
+    ivy_gpa_data = []
+    for school, display_name in ivy_leagues.items():
+        # Filter rows where 'acceptances' column contains the school's name (case-insensitive)
+        accepted = df_gpa[df_gpa['acceptances'].str.contains(school, case=False, na=False)]
+        for gpa in accepted['GPA']:
+            ivy_gpa_data.append({'School': display_name, 'GPA': gpa})
+    
+    ivy_df = pd.DataFrame(ivy_gpa_data)
+    if ivy_df.empty:
+        st.write("No GPA data found for Ivy League acceptances.")
+        return
+    
+    fig = px.strip(
+        ivy_df,
+        x='School',
         y='GPA',
         color='School',
-        color_discrete_map=ivy_schools,
-        labels={'x_jitter': 'School', 'GPA': 'GPA'},
-        title="GPA Distribution of Ivy League Admittees",
-        hover_data=['School', 'GPA'],
-        width=900,
-        height=500
+        stripmode='overlay',
+        labels={'School': 'Ivy League School', 'GPA': 'GPA'},
+        title="GPA Distribution of Students Accepted to Ivy League Schools (Strip Plot)",
+        color_discrete_sequence=px.colors.qualitative.Safe
     )
-
-    # Update x-axis to show school names at correct positions
-    fig.update_xaxes(
-        tickvals=list(range(len(ivy_schools))),
-        ticktext=list(ivy_schools.keys()),
-        title_text="Ivy League School"
-    )
-    fig.update_yaxes(range=[3.0,4.0], title_text="GPA")
-    fig.update_traces(marker=dict(size=7, opacity=0.7))
-    fig.update_layout(showlegend=True)
-
+    fig.update_yaxes(range=[3.0, 4.0])
+    fig.update_layout(showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
 
 def main():
     st.title("🎲 Fun Data Corner")
-    st.header("Within‑Race SAT Distribution (1100–1600)")
-
+    
     st.markdown("""
     Hello fellow data nerds! Here you can find numerous different angles of data visualization from the dataset I am using, updated as my dataset improves.
 
     I do want to note that since the data were taken from a subreddit dedicated to college results, there is a volunteer response bias in play that definitely overestimates all metrics for the typical student. Nevertheless, there aren't any better sources for this data that I could find, so we will have to roll with it!
     """)
-
-    # New label below intro
+    
+    # 1. SAT Scores Visualization
     st.subheader("1. Race and Standardized Test Scores")
+    df, df_gpa = load_and_prepare_data()
 
-    df = load_and_prepare_data()
-
-    # Collapsible widget for choosing visualization type
-    with st.expander("▶️ Visualization Options", expanded=False):
-        mode = st.radio(
+    with st.expander("▶️ SAT Visualization Options", expanded=False):
+        sat_mode = st.radio(
             "Visualization type:",
             ["Box‑Plot Distribution", "Within‑Race Percentage Histogram"]
         )
 
-    if mode == "Box‑Plot Distribution":
+    if sat_mode == "Box‑Plot Distribution":
         with st.expander("▶️ Box‑Plot of SAT Scores by Race", expanded=False):
             plot_box(df)
     else:
         st.subheader("Percentage Histogram Within Each Race")
         plot_within_race(df)
-
-    # Next graph: Ivy League GPA strip plot
-    st.subheader("2. GPA Distribution of Ivy League Admittees")
-    plot_strip(df)
+        
+    # 2. Ivy League GPA Distribution Visualization
+    st.subheader("2. Ivy League GPA Distribution of Accepted Students")
+    with st.expander("▶️ Ivy League GPA Strip Plot", expanded=True):
+        plot_ivy_gpa_strip(df_gpa)
 
 if __name__=="__main__":
     main()
-
-
