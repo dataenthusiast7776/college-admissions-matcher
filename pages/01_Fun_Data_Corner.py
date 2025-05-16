@@ -90,6 +90,9 @@ def main():
     I do want to note that since the data were taken from a subreddit dedicated to college results, there is a volunteer response bias in play that definitely overestimates all metrics for the typical student. Nevertheless, there aren't any better sources for this data that I could find, so we will have to roll with it!
     """)
 
+    # New label below intro
+    st.subheader("Race and Standardized Test Scores")
+
     df = load_and_prepare_data()
 
     # Collapsible widget for choosing visualization type
