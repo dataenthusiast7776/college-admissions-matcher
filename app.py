@@ -84,7 +84,7 @@ def match_profiles(df, gpa, sat, act, eth, gen):
 def load_data():
     # make sure this is the RAW URL from GitHub
     return pd.read_csv(
-      "https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/main/updated_college_data.csv"
+      "https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/refs/heads/main/master_data.csv"
     )
 
 def main():
