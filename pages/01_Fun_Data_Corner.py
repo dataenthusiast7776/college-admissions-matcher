@@ -83,7 +83,7 @@ def plot_within_race(df):
     fig.update_layout(xaxis_tickangle=-45, legend_title_text="Race", yaxis_ticksuffix="%")
     st.plotly_chart(fig, use_container_width=True)
 
-def plot_ivy_gpa_strip(df_gpa):
+def plot_ivy_gpa_violin(df_gpa):
     ivy_leagues = {
         'Brown': 'Brown',
         'Columbia': 'Columbia',
@@ -95,10 +95,8 @@ def plot_ivy_gpa_strip(df_gpa):
         'Yale': 'Yale'
     }
     
-    # Collect GPAs for admitted students per ivy
     ivy_gpa_data = []
     for school, display_name in ivy_leagues.items():
-        # Filter rows where 'acceptances' column contains the school's name (case-insensitive)
         accepted = df_gpa[df_gpa['acceptances'].str.contains(school, case=False, na=False)]
         for gpa in accepted['GPA']:
             ivy_gpa_data.append({'School': display_name, 'GPA': gpa})
@@ -108,14 +106,15 @@ def plot_ivy_gpa_strip(df_gpa):
         st.write("No GPA data found for Ivy League acceptances.")
         return
     
-    fig = px.strip(
+    fig = px.violin(
         ivy_df,
         x='School',
         y='GPA',
         color='School',
-        stripmode='overlay',
+        box=True,  # Show boxplot inside violin
+        points='all',  # Show all points jittered
         labels={'School': 'Ivy League School', 'GPA': 'GPA'},
-        title="GPA Distribution of Students Accepted to Ivy League Schools (Strip Plot)",
+        title="GPA Distribution of Students Accepted to Ivy League Schools (Violin Plot)",
         color_discrete_sequence=px.colors.qualitative.Safe
     )
     fig.update_yaxes(range=[3.0, 4.0])
@@ -150,8 +149,8 @@ def main():
         
     # 2. Ivy League GPA Distribution Visualization
     st.subheader("2. Ivy League GPA Distribution of Accepted Students")
-    with st.expander("▶️ Ivy League GPA Strip Plot", expanded=True):
-        plot_ivy_gpa_strip(df_gpa)
+    with st.expander("▶️ Ivy League GPA Violin Plot", expanded=True):
+        plot_ivy_gpa_violin(df_gpa)
 
 if __name__=="__main__":
     main()
