@@ -88,7 +88,7 @@ def display_results(res):
     if res.empty:
         st.warning("0 matches found.")
     else:
-        st.success(f"Found {len(res)} matching profiles:")
+        st.success(f"Found {len(res)} of 2958 matching profiles:")
         for _, r in res.iterrows():
             st.markdown(f"""
             <div style="font-size:14px; line-height:1.4; margin-bottom:8px;">
