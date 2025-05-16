@@ -91,7 +91,7 @@ def main():
     """)
 
     # New label below intro
-    st.subheader("Race and Standardized Test Scores")
+    st.subheader("1. Race and Standardized Test Scores")
 
     df = load_and_prepare_data()
 
