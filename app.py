@@ -199,47 +199,101 @@ def main():
             st.info("Enter one or more college names to see matching acceptances.")
 
     with tabs[2]:
-        st.markdown("### 🎓 College List Wizard")
-        st.info("Provide your academic info, intended major, and extracurriculars — we’ll suggest the best-fit target and reach schools based on data!")
+        st.header("🎯 College Matchmaker")
+        st.markdown("Find schools where students like you got in!")
     
-        # Academic info
-        st.markdown("#### 📚 Academic Info")
-        uw_gpa = st.number_input("Unweighted GPA (4.0 scale)", 0.0, 4.0, step=0.01)
+        # Load data from GitHub
+        @st.cache_data
+        def load_data():
+            url = "https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/refs/heads/main/master_data.csv"
+            return pd.read_csv(url)
+        
+        df = load_data()
     
-        test_type = st.radio("Testing Info", ["SAT", "ACT", "Test Optional"], horizontal=True)
+        # --- User Input ---
+        gpa = st.slider("Your GPA (unweighted, max 4.0)", 0.0, 4.0, 4.0, 0.01)
+    
+        score_type = st.selectbox("Test Type", ["None", "SAT", "ACT"])
         sat_score = act_score = None
-        if test_type == "SAT":
-            sat_score = st.number_input("SAT Score", 400, 1600, step=10)
-        elif test_type == "ACT":
-            act_score = st.number_input("ACT Score", 1, 36, step=1)
+        if score_type == "SAT":
+            sat_score = st.number_input("SAT Score", 400, 1600, 1500, 10)
+        elif score_type == "ACT":
+            act_score = st.number_input("ACT Score", 1, 36, 34, 1)
     
-        # Domestic vs International selector
-        residency = st.radio("Residency Status", ["Domestic", "International"])
+        residency = st.selectbox("Are you applying as a...", ["Domestic", "International"])
     
-        # Major input
-        st.markdown("#### 🎓 Intended Major")
-        intended_major = st.text_input(
-            "Enter your intended major or field of study",
-            placeholder="e.g., Computer Science, Biology, Economics"
-        )
+        ec_input = st.text_area("Your extracurriculars (keywords):", height=60, placeholder="e.g. math club, robotics, research")
+        major_input = st.text_input("Intended Major (optional):", placeholder="e.g. Computer Science")
     
-        # Extracurriculars free text
-        st.markdown("#### 🧠 Extracurriculars")
-        ec_input = st.text_area(
-            "Briefly describe your key extracurricular activities",
-            placeholder="e.g., Debate captain, National Honor Society, volunteer EMT, research internship",
-            height=100
-        )
+        email = st.text_input("Your Email (to receive a PDF summary):", placeholder="e.g. you@example.com")
+        match_button = st.button("🎉 Match Me!")
     
-        submitted = st.button("Submit Preferences")
-        if submitted:
-            st.success("Your preferences have been recorded! Personalized college list coming soon.")
-            st.markdown("### Here’s what you entered:")
-            st.markdown(f"- **GPA:** {uw_gpa}")
-            st.markdown(f"- **Testing:** {'SAT: ' + str(sat_score) if test_type == 'SAT' else 'ACT: ' + str(act_score) if test_type == 'ACT' else 'Test Optional'}")
-            st.markdown(f"- **Residency:** {residency}")
-            st.markdown(f"- **Intended Major:** {intended_major or 'Not specified'}")
-            st.markdown(f"- **Extracurriculars:** {ec_input or 'Not specified'}")
+        # --- Matching Logic ---
+        def match_profiles(df, gpa, sat=None, act=None, residency=None, ec_keywords=None, major_keywords=None):
+            import difflib
+    
+            filtered = df.copy()
+    
+            # Academic filters
+            filtered = filtered[filtered["GPA"] >= gpa - 0.2]
+            if sat is not None:
+                filtered = filtered[filtered["SAT_Score"] >= sat - 40]
+            if act is not None:
+                filtered = filtered[filtered["ACT_Score"] >= act - 2]
+    
+            # Residency filter
+            if residency:
+                filtered = filtered[filtered["Residency"].str.lower() == residency.lower()]
+    
+            # EC match
+            if ec_keywords:
+                filtered["ec_score"] = filtered["parsed_ECs"].apply(
+                    lambda x: difflib.SequenceMatcher(None, ec_keywords.lower(), str(x).lower()).ratio()
+                )
+            else:
+                filtered["ec_score"] = 0.5
+    
+            # Major match
+            if major_keywords:
+                filtered["major_score"] = filtered["Major"].apply(
+                    lambda x: difflib.SequenceMatcher(None, major_keywords.lower(), str(x).lower()).ratio()
+                )
+            else:
+                filtered["major_score"] = 0.5
+    
+            # Combined relevance score
+            filtered["match_score"] = (filtered["ec_score"] + filtered["major_score"]) / 2
+            filtered = filtered.sort_values("match_score", ascending=False)
+    
+            return filtered.head(10)
+    
+        # --- Run & Display ---
+        if match_button:
+            if not email or "@" not in email:
+                st.error("Please enter a valid email to see your matches.")
+            else:
+                matches = match_profiles(
+                    df, gpa, sat_score, act_score, residency,
+                    ec_keywords=ec_input, major_keywords=major_input
+                )
+    
+                if matches.empty:
+                    st.warning("No matches found. Try adjusting your profile.")
+                else:
+                    st.success("🎓 Top Matches Based on Your Profile:")
+                    for _, row in matches.iterrows():
+                        st.markdown(
+                            f"**{row['title']}**\n"
+                            f"- GPA: {row['GPA']}, SAT: {row['SAT_Score']}, ACT: {row['ACT_Score']}\n"
+                            f"- Major: {row['Major']}\n"
+                            f"- ECs: {row['parsed_ECs']}\n"
+                            f"- Residency: {row['Residency']}"
+                        )
+    
+                    # Save emails locally (for now)
+                    with open("emails_collected.txt", "a") as f:
+                        f.write(email.strip() + "\n")
+
 
 if __name__=="__main__":
     main()
