@@ -162,9 +162,10 @@ def fuzzy_match_major(user_major, majors_list, cutoff=0.6):
     return matches[0] if matches else None
 
 def college_list_wizard(df):
-    st.markdown("### 🎓 College List Wizard")
+    st.markdown("### 🎓 College List Wizard (DEBUG MODE)")
     st.info("Provide your academic profile and we’ll find matching accepted colleges!")
 
+    # Inputs
     gpa = st.text_input("Enter your GPA (0.0–4.0):")
     test_score = st.text_input("Enter SAT (400–1600) or ACT (1–36):")
     major = st.text_input("Intended Major:")
@@ -172,15 +173,17 @@ def college_list_wizard(df):
     domestic = st.checkbox("Domestic student? (leave unchecked for International)")
     email = st.text_input("Enter your Email:")
 
+    # Email validation
     if email and not is_valid_email(email):
         st.warning("Please enter a valid email address.")
 
-    # parse inputs
+    # Parse GPA
     try:
         gpa_val = float(gpa)
     except:
         gpa_val = None
 
+    # Parse test score
     sat_val = act_val = None
     if test_score.strip().isdigit():
         sc = int(test_score.strip())
@@ -190,48 +193,70 @@ def college_list_wizard(df):
         elif 400 <= sc <= 1600:
             sat_val = sc
 
+    # Fuzzy major match
     majors_list = df['Major'].dropna().unique()
     matched_major = fuzzy_match_major(major, majors_list)
 
+    # Match Me! button
     match_button = st.button("Match Me!", disabled=not is_valid_email(email))
     if not match_button:
         return
 
-    # begin filtering
+    # Start filtering
     df2 = df.copy()
+    st.write("🔹 Initial DataFrame:", df2.shape)
+
+    # Residency
     df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)
     target_res = "domestic" if domestic else "international"
     df2 = df2[df2['Residency_norm'] == target_res]
+    st.write(f"🔹 After Residency filter ({target_res}):", df2.shape)
+    st.dataframe(df2[['Residency','Residency_norm']].head())
 
+    # GPA
     if gpa_val is not None:
         df2 = df2[(df2['GPA'] >= gpa_val - 0.1) & (df2['GPA'] <= gpa_val + 0.1)]
+        st.write(f"🔹 After GPA filter (±0.1 around {gpa_val}):", df2.shape)
+        st.dataframe(df2[['GPA']].head())
 
+    # SAT/ACT
     def sat_act_match(row):
         sat_ok = sat_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - sat_val) <= 30
         act_ok = act_val is not None and not pd.isna(row['ACT_Score']) and abs(row['ACT_Score'] - act_val) <= 1
-        conv_ok = False
-        if act_val is not None and not pd.isna(row['SAT_Score']):
-            conv_ok = abs(row['SAT_Score'] - act_val*45) <= 30
+        conv_ok = act_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - act_val*45) <= 30
         return sat_ok or act_ok or conv_ok
 
-    df2 = df2[df2.apply(sat_act_match, axis=1)]
+    if sat_val is not None or act_val is not None:
+        df2 = df2[df2.apply(sat_act_match, axis=1)]
+        st.write("🔹 After SAT/ACT filter:", df2.shape)
+        st.dataframe(df2[['SAT_Score','ACT_Score']].head())
 
+    # Major
     if matched_major:
         df2 = df2[df2['Major'].str.lower() == matched_major]
+        st.write(f"🔹 After Major filter (matched: {matched_major}):", df2.shape)
+        st.dataframe(df2[['Major']].head())
 
+    # Extracurriculars
     ec_keys = extract_keywords(ecs)
     if ec_keys:
         df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
+        st.write(f"🔹 After EC keyword filter (keywords: {ec_keys}):", df2.shape)
+        st.dataframe(df2[['parsed_ECs']].head())
 
-    # clean and aggregate acceptances
-    df2['acceptances_clean'] = df2['acceptances'].apply(lambda raw: ", ".join([p.strip() for p in re.split(r"[\n,]+", raw) if p.strip()]))
+    # Clean acceptances
+    df2['acceptances_clean'] = df2['acceptances'].apply(
+        lambda raw: ", ".join([p.strip() for p in re.split(r"[\n,]+", raw) if p.strip()])
+    )
     df2 = df2[df2['acceptances_clean'] != ""]
+    st.write("🔹 After cleaning acceptances:", df2.shape)
+    st.dataframe(df2[['acceptances_clean']].head())
+
     if df2.empty:
         st.warning("No matches found.")
         return
 
-    st.success(f"Found {len(df2)} matching profiles!")
-
+    # Aggregate and display results
     counts = Counter(", ".join(df2['acceptances_clean']).lower().split(", "))
     st.markdown("#### Accepted Colleges Summary:")
     for school, cnt in counts.most_common(20):
@@ -247,10 +272,10 @@ def college_list_wizard(df):
           Acceptances: {r['acceptances_clean']}  
           EC hits: {', '.join(ec_hits)}
         """)
-
-    # log email
+    # Log email
     with open("emails_collected.txt", "a") as f:
         f.write(email + "\n")
+
 
 # ——— Main App ———
 def main():
