@@ -459,11 +459,11 @@ def main():
       <p style='color:#DAA520; font-size:1.2em;'>Find your college application twin!</p>
     </div>
     """, unsafe_allow_html=True)
-    with st.expander("Learn more about the app!"):
-    st.write("""
+
+    st.markdown("""
     I got bored one day, so I wrote a script to mine data off of the r/collegeresults subreddit. Well, one thing turned into another, and I realized I had a treasure trove of data to be put to use. A few days of caffeine-induced coding later, voila! MatchMyApp was born.
 
-    Whether you're a college junior preparing for college applications, a data enthusiast, or a parent looking to see how far your child could go, MatchMyApp has free, data-driven tools for you! Input your stats and see the results of similar past applicants in seconds, or build a targeted college list based on past acceptance data! Or, if you're a data nerd like me, head over to the data corner for and endless array of interesting graphs made from the master dataset.
+    Whether you're a college junior preparing for college applications, a data enthusiast, or a parent looking to see how far your child could go, MatchMyApp has free, data-driven tools for you! Input your stats and see the results of similar past applicants in seconds, or build a targeted college list based on past acceptance data! Or, if you're a data nerd like me, head over to the data corner for an endless array of interesting graphs made from the master dataset.
 
     MatchMyApp is a work-in-progress, and I am currently working on adding LLM-supported features such as essay revision and guidance, personalized advice for extracurriculars, and more, all for free!
     """)
