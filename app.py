@@ -140,6 +140,12 @@ def display_results(res):
             """, unsafe_allow_html=True)
 
 def main():
+     @st.cache_data
+    def load_data():
+        url = "https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/refs/heads/main/master_data.csv"
+        return pd.read_csv(url)
+        
+        df = load_data()
     st.markdown("""
     <div style='text-align:center; margin-bottom:1.5rem;'>
       <h1 style='color:#6A0DAD; font-size:3em; margin-bottom:0;'>MatchMyApp</h1>
@@ -203,12 +209,6 @@ def main():
         st.markdown("Find schools where students like you got in!")
     
         # Load data from GitHub
-        @st.cache_data
-        def load_data():
-            url = "https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/refs/heads/main/master_data.csv"
-            return pd.read_csv(url)
-        
-        df = load_data()
     
         # --- User Input ---
         gpa = st.slider("Your GPA (unweighted, max 4.0)", 0.0, 4.0, 4.0, 0.01)
