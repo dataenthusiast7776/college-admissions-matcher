@@ -252,66 +252,66 @@ def main():
         st.header("🎯 College Matchmaker")
         st.markdown("Find schools where students like you got in!")
     
-        # GPA input
+        # 1) GPA
         gpa = st.slider(
             "Your GPA (max 4.0)",
             0.0, 4.0, 4.0, 0.01,
-            key="gpa_tab2"
+            key="tab2_gpa"
         )
     
-        # Test score input
+        # 2) Test Type
         score_type = st.selectbox(
             "Test Type",
             ["None", "SAT", "ACT"],
-            key="score_tab2"
+            key="tab2_score_type"
         )
         sat_wiz = act_wiz = None
         if score_type == "SAT":
             sat_wiz = st.number_input(
                 "SAT Score",
                 400, 1600, 1500, 10,
-                key="sat_tab2"
+                key="tab2_sat"
             )
         elif score_type == "ACT":
             act_wiz = st.number_input(
                 "ACT Score",
                 1, 36, 34, 1,
-                key="act_tab2"
+                key="tab2_act"
             )
     
-        # Residency selector
+        # 3) Residency
         residency = st.selectbox(
             "Are you applying as a...",
             ["Domestic", "International"],
-            key="residency_tab2"
+            key="tab2_residency"
         )
     
-        # Extracurriculars keywords
+        # 4) EC Keywords
         ec_wiz = st.text_area(
             "Your extracurriculars (keywords):",
             placeholder="e.g. math club, research",
             height=60,
-            key="ec_tab2"
+            key="tab2_ec"
         )
     
-        # Intended major
+        # 5) Intended Major
         major_wiz = st.text_input(
             "Intended Major (optional):",
             placeholder="e.g. Computer Science",
-            key="major_tab2"
+            key="tab2_major"
         )
     
-        # Email for PDF summary
+        # 6) Email
         email = st.text_input(
             "Your Email (to receive a PDF summary):",
             placeholder="you@example.com",
-            key="email_tab2"
+            key="tab2_email"
         )
     
-        # Trigger matching
+        # 7) Match Button
         match_btn = st.button(
             "🎉 Match Me!",
-            key="match_btn_tab2"
+            key="tab2_match_btn"
         )
     
         if match_btn:
@@ -339,7 +339,6 @@ def main():
                             f"Residency: {r['Residency']}",
                             unsafe_allow_html=True
                         )
-                    # Save email locally
                     with open("emails_collected.txt", "a") as f:
                         f.write(email.strip() + "\n")
 
