@@ -296,14 +296,6 @@ def college_list_wizard(df):
         st.warning("No matches found.")
         return
 
-    # Aggregate and display results
-    counts = Counter(
-    df2['acceptances'].explode().dropna().str.lower()
-)
-    st.markdown("#### Accepted Colleges Summary:")
-    for school, cnt in counts.most_common(20):
-        st.markdown(f"- **{school.title()}** — {cnt} acceptance(s)")
-
     st.markdown("---\n#### Matched Profiles:")
     for _, r in df2.iterrows():
         ec_hits = [kw for kw in ec_keys if kw in str(r['parsed_ECs']).lower()]
