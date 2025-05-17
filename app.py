@@ -458,9 +458,7 @@ def main():
         <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
         <p style='color:#DAA520; font-size:1.2em; margin:0;'>Find your college application twin!</p>
       </div>
-      <div style="flex-shrink:0;">
-        <img src="https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/refs/heads/main/assets/logo.png" style="width:100px; height:100px;" />
-      </div>
+      
     </div>
     """, unsafe_allow_html=True)
 
