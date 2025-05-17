@@ -468,8 +468,6 @@ def main():
         <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
         <p style='color:#DAA520; font-size:1.2em; margin:0; line-height:1; margin-top:-8px;'>Find your college application twin!</p>
       </div>
-    </div>
-
     <div style="margin-top: 30px; max-width: 700px; margin-left: auto; margin-right: auto;">
       <p>I got bored one day, so I wrote a script to mine data off of the r/collegeresults subreddit. Well, one thing turned into another, and I realized I had a treasure trove of data to be put to use. A few days of caffeine-induced coding later, voila! MatchMyApp was born.</p>
 
