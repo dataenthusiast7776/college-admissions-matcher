@@ -458,10 +458,12 @@ def main():
         <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
         <p style='color:#DAA520; font-size:1.2em; margin:0; line-height:1; margin-top:-8px;'>Find your college application twin!</p>
       </div>
+      
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
+    
     I got bored one day, so I wrote a script to mine data off of the r/collegeresults subreddit. Well, one thing turned into another, and I realized I had a treasure trove of data to be put to use. A few days of caffeine-induced coding later, voila! MatchMyApp was born.
 
     Whether you're a college junior preparing for college applications, a data enthusiast, or a parent looking to see how far your child could go, MatchMyApp has free, data-driven tools for you! Input your stats and see the results of similar past applicants in seconds, or build a targeted college list based on past acceptance data! Or, if you're a data nerd like me, head over to the data corner for an endless array of interesting graphs made from the master dataset.
