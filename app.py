@@ -164,7 +164,7 @@ def fuzzy_match_major(user_major, majors_list, cutoff=0.6):
 from collections import Counter
 
 def college_list_wizard(df):
-    st.markdown("### 🎓 College List Wizard (DEBUG MODE)")
+    st.markdown("### 🎓 College List Wizard (Updated)")
     st.info("Provide your academic profile and we’ll find matching accepted colleges!")
 
     # Inputs
@@ -200,16 +200,13 @@ def college_list_wizard(df):
         return
 
     df2 = df.copy()
-    st.write("🔹 Initial DataFrame:", df2.shape)
 
     df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)
     target_res = "domestic" if domestic else "international"
     df2 = df2[df2['Residency_norm'] == target_res]
-    st.write(f"🔹 After Residency filter ({target_res}):", df2.shape)
 
     if gpa_val is not None:
         df2 = df2[(df2['GPA'] >= gpa_val - 0.1) & (df2['GPA'] <= gpa_val + 0.1)]
-        st.write(f"🔹 After GPA filter (±0.1 around {gpa_val}):", df2.shape)
 
     def sat_act_match(row):
         sat_ok = sat_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - sat_val) <= 30
@@ -219,56 +216,60 @@ def college_list_wizard(df):
 
     if sat_val is not None or act_val is not None:
         df2 = df2[df2.apply(sat_act_match, axis=1)]
-        st.write("🔹 After SAT/ACT filter:", df2.shape)
 
     if matched_major:
         df2 = df2[df2['Major'].str.lower() == matched_major]
-        st.write(f"🔹 After Major filter (matched: {matched_major}):", df2.shape)
 
     ec_keys = extract_keywords(ecs)
     if ec_keys:
         df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
-        st.write(f"🔹 After EC keyword filter (keywords: {ec_keys}):", df2.shape)
 
-    if df2.empty:
-        st.warning("No matching profiles found.")
-        return
-
-    # School indicators and top school whitelist
-    school_indicators = ["university", "college", "institute", "school", "academy", "tech", "polytechnic"]
+    # School indicators and top schools list
+    indicators = [
+        "university", "college", "institute", "school",
+        "academy", "tech", "polytechnic", "poly"
+    ]
     top_schools = [
-        "harvard", "yale", "princeton", "stanford", "mit", "columbia", "uchicago", "upenn", "caltech", "duke",
-        "dartmouth", "brown", "cornell", "northwestern", "vanderbilt", "jhu", "rice", "notre dame", "georgetown",
-        "emory", "berkeley", "ucla", "umich", "usc", "carnegie", "unc", "uva", "nyu", "wustl", "tufts", "wake forest",
-        "boston college", "williams", "amherst", "pomona", "swarthmore", "wellesley", "middlebury", "carleton",
-        "claremont", "haverford", "bowdoin"
+        "harvard", "princeton", "yale", "stanford", "mit", "columbia", "uchicago", "upenn", "duke",
+        "caltech", "dartmouth", "brown", "northwestern", "johns hopkins", "cornell", "vanderbilt",
+        "rice", "notre dame", "washu", "emory", "georgetown", "berkeley", "ucla", "usc", "umich",
+        "unc", "uva", "carnegie mellon", "tufts", "wake forest", "nyu", "georgia tech", "boston college",
+        "brandeis", "uw madison", "ucsd", "uiuc", "uf", "williams", "amherst", "pomona", "swarthmore",
+        "wellesley", "claremont mckenna", "carleton", "bowdoin", "middlebury"
     ]
 
     def extract_clean_colleges(raw):
-        if pd.isna(raw):
+        if not isinstance(raw, str):
             return []
         parts = re.split(r"[\n,]+", raw)
         cleaned = []
-        for part in parts:
-            name = part.split("(", 1)[0].strip()  # Remove parenthetical
-            if not name or len(name) > 100:
+        for p in parts:
+            seg = p.strip()
+            if not seg:
                 continue
-            low = name.lower()
-            if any(ind in low for ind in school_indicators) or any(s in low for s in top_schools):
-                cleaned.append(name)
+            seg = seg.split("(", 1)[0].strip()
+            if len(seg) > 100:
+                continue
+            low = seg.lower()
+            if any(ind in low for ind in indicators) or any(ts in low for ts in top_schools):
+                cleaned.append(seg)
         return cleaned
 
     df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
     all_schools = [school for sub in df2["cleaned_list"] for school in sub]
 
     if not all_schools:
-        st.warning("No recognizable college acceptances found.")
+        st.warning("No recognizable colleges found.")
         return
 
     counts = Counter(all_schools)
     st.markdown("#### Accepted Colleges Summary:")
     for school, cnt in counts.most_common(20):
         st.markdown(f"- **{school}** — {cnt} acceptance(s)")
+
+    if df2.empty:
+        st.warning("No matches found.")
+        return
 
     st.markdown("---\n#### Matched Profiles:")
     for _, r in df2.iterrows():
@@ -277,13 +278,13 @@ def college_list_wizard(df):
         • [{r['url']}]({r['url']})  
           GPA: {r['GPA']:.2f} | SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}  
           Major: {r['Major']} | Residency: {r['Residency_norm']}  
-          Acceptances: {', '.join(r['cleaned_list'])}  
+          Acceptances: {r['acceptances_clean']}  
           EC hits: {', '.join(ec_hits)}
         """)
 
-    # Log email
     with open("emails_collected.txt", "a") as f:
         f.write(email + "\n")
+
 
 
 
