@@ -199,7 +199,7 @@ def main():
 
     with tabs[2]:
         st.markdown("### 🎓 College List Wizard")
-        st.info("Provide your academic info, intended major, and extracurriculars — we’ll suggest the best-fit colleges based on data!")
+        st.info("Provide your academic info, intended major, and extracurriculars — we’ll suggest the best-fit target and reach schools based on data!")
     
         # Academic info
         st.markdown("#### 📚 Academic Info")
