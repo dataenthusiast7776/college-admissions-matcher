@@ -282,137 +282,138 @@ def college_list_wizard(df):
         counts = Counter([s.lower() for s in all_schools])
 
         # Build PDF
- buffer = io.BytesIO()
- c = canvas.Canvas(buffer, pagesize=letter)
- width, height = letter
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
 
-# Title and Timestamp
-c.setFont("Helvetica-Bold", 16)
-c.drawString(40, height - 50, "MatchMyApp - Personalized College List")
-c.setFont("Helvetica", 10)
-c.drawString(40, height - 70, "Generated on: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        # Title and Timestamp
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(40, height - 50, "MatchMyApp - Personalized College List")
+        c.setFont("Helvetica", 10)
+        c.drawString(40, height - 70, "Generated on: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-y = height - 100
+        y = height - 100
 
-# User inputs - including ECs
-c.setFont("Helvetica-Bold", 12)
-c.drawString(40, y, "📌 Your Inputs")
-y -= 20
-c.setFont("Helvetica", 10)
+        # User inputs - including ECs
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "📌 Your Inputs")
+        y -= 20
+        c.setFont("Helvetica", 10)
 
-user_inputs = [
-    ("GPA", gpa),
-    ("SAT", str(sat_val) if sat_val else "N/A"),
-    ("ACT", str(act_val) if act_val else "N/A"),
-    ("Major", major if major else "N/A"),
-    ("Residency", "Domestic" if domestic else "International"),
-    ("Extracurriculars", ecs if ecs.strip() else "N/A"),
-    ("Email", email if email else "N/A"),
-]
+        user_inputs = [
+            ("GPA", gpa),
+            ("SAT", str(sat_val) if sat_val else "N/A"),
+            ("ACT", str(act_val) if act_val else "N/A"),
+            ("Major", major if major else "N/A"),
+            ("Residency", "Domestic" if domestic else "International"),
+            ("Extracurriculars", ecs if ecs.strip() else "N/A"),
+            ("Email", email if email else "N/A"),
+        ]
 
-for label, value in user_inputs:
-    lines = textwrap.wrap(f"{label}: {value}", width=90)
-    for line in lines:
-        c.drawString(50, y, line)
-        y -= 15
+        for label, value in user_inputs:
+            lines = textwrap.wrap(f"{label}: {value}", width=90)
+            for line in lines:
+                c.drawString(50, y, line)
+                y -= 15
 
-# Space after inputs
-y -= 20
+        # Space after inputs
+        y -= 20
+        
+        # Matched Colleges (up to 20)
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "🎯 Matched Colleges")
+        y -= 25
+        
+        c.setFont("Helvetica-Bold", 11)
+        max_colleges = 20
+        for school, cnt in counts.most_common(max_colleges):
+            college_name = school.title()
+            text = f"{college_name} — {cnt} acceptance(s)"
+            c.setFillColorRGB(0, 0, 0.5)  # dark blue
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(50, y, college_name)
+        
+            c.setFillColorRGB(0, 0, 0)
+            c.setFont("Helvetica", 11)
+            accept_text = f" — {cnt} acceptance(s)"
+            width_name = c.stringWidth(college_name, "Helvetica-Bold", 12)
+            c.drawString(50 + width_name, y, accept_text)
+        
+            url = next((r['url'] for _, r in df2.iterrows() if school in str(r['acceptances']).lower()), None)
+            if url:
+                y -= 15
+                c.setFont("Helvetica-Oblique", 9)
+                c.setFillColorRGB(0, 0, 1)  # blue for link
+                c.drawString(60, y, "Reddit: " + url)
+                c.linkURL(url, (60, y - 2, 60 + c.stringWidth("Reddit: " + url, "Helvetica-Oblique", 9), y + 10), relative=0)
+        
+            y -= 25
+            c.setFillColorRGB(0, 0, 0)
+        
+            if y < 80:
+                c.showPage()
+                y = height - 50
+        
+        # Reddit Insights — only filtered posts, max 10
+        y -= 10
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "🧠 Reddit Insights")
+        y -= 25
+        c.setFont("Helvetica", 9)
+        
+        reddit_filtered = df2.head(10)  # assuming df2 already filtered
+        
+        if reddit_filtered.empty:
+            c.drawString(50, y, "No Reddit posts available after applying your filters.")
+            y -= 20
+        else:
+            for _, row in reddit_filtered.iterrows():
+                url = row['url']
+                gpa_post = row.get('GPA', None)
+                sat_post = row.get('SAT_Score', None)
+                act_post = row.get('ACT_Score', None)
+                major_post = row.get('Major', None)
+                text = f"GPA {gpa_post}, SAT {sat_post}, ACT {act_post}, Major {major_post}"
+        
+                c.setFillColorRGB(0, 0, 1)
+                c.drawString(50, y, url)
+                c.linkURL(url, (50, y - 2, 50 + c.stringWidth(url, "Helvetica", 9), y + 10), relative=0)
+                y -= 12
+        
+                c.setFillColorRGB(0, 0, 0)
+                for line in textwrap.wrap(text, width=110):
+                    c.drawString(50, y, line)
+                    y -= 12
+        
+                y -= 15
+                if y < 80:
+                    c.showPage()
+                    y = height - 50
+        
+        # Notes Section with your exact text
+        y -= 10
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "💡 Notes")
+        y -= 25
+        c.setFont("Helvetica", 10)
+        
+        notes = """
+        These colleges were suggested to you because past applicants with similar profiles and interests got into them. When building your college list, please make sure to consider a range of factors, including your class size preferences, location, campus culture, sports culture, and financial aid.
+        
+        Also, note that most of the top schools are committed to meeting your full demonstrated need, but do your research since there are a few exceptions! 
+        
+        If you found this helpful, do share our app with a friend to spread the joy of college application preparation!
+        """
+        
+        for line in notes.strip().split('\n'):
+            for wrapped_line in textwrap.wrap(line.strip(), width=110):
+                c.drawString(50, y, wrapped_line)
+                y -= 15
+            y -= 5
+        
+        c.save()
+        buffer.seek(0)
 
-# Matched Colleges (up to 20)
-c.setFont("Helvetica-Bold", 12)
-c.drawString(40, y, "🎯 Matched Colleges")
-y -= 25
-
-c.setFont("Helvetica-Bold", 11)
-max_colleges = 20
-for school, cnt in counts.most_common(max_colleges):
-    college_name = school.title()
-    text = f"{college_name} — {cnt} acceptance(s)"
-    c.setFillColorRGB(0, 0, 0.5)  # dark blue
-    c.setFont("Helvetica-Bold", 12)
-    c.drawString(50, y, college_name)
-
-    c.setFillColorRGB(0, 0, 0)
-    c.setFont("Helvetica", 11)
-    accept_text = f" — {cnt} acceptance(s)"
-    width_name = c.stringWidth(college_name, "Helvetica-Bold", 12)
-    c.drawString(50 + width_name, y, accept_text)
-
-    url = next((r['url'] for _, r in df2.iterrows() if school in str(r['acceptances']).lower()), None)
-    if url:
-        y -= 15
-        c.setFont("Helvetica-Oblique", 9)
-        c.setFillColorRGB(0, 0, 1)  # blue for link
-        c.drawString(60, y, "Reddit: " + url)
-        c.linkURL(url, (60, y - 2, 60 + c.stringWidth("Reddit: " + url, "Helvetica-Oblique", 9), y + 10), relative=0)
-
-    y -= 25
-    c.setFillColorRGB(0, 0, 0)
-
-    if y < 80:
-        c.showPage()
-        y = height - 50
-
-# Reddit Insights — only filtered posts, max 10
-y -= 10
-c.setFont("Helvetica-Bold", 12)
-c.drawString(40, y, "🧠 Reddit Insights")
-y -= 25
-c.setFont("Helvetica", 9)
-
-reddit_filtered = df2.head(10)  # assuming df2 already filtered
-
-if reddit_filtered.empty:
-    c.drawString(50, y, "No Reddit posts available after applying your filters.")
-    y -= 20
-else:
-    for _, row in reddit_filtered.iterrows():
-        url = row['url']
-        gpa_post = row.get('GPA', None)
-        sat_post = row.get('SAT_Score', None)
-        act_post = row.get('ACT_Score', None)
-        major_post = row.get('Major', None)
-        text = f"GPA {gpa_post}, SAT {sat_post}, ACT {act_post}, Major {major_post}"
-
-        c.setFillColorRGB(0, 0, 1)
-        c.drawString(50, y, url)
-        c.linkURL(url, (50, y - 2, 50 + c.stringWidth(url, "Helvetica", 9), y + 10), relative=0)
-        y -= 12
-
-        c.setFillColorRGB(0, 0, 0)
-        for line in textwrap.wrap(text, width=110):
-            c.drawString(50, y, line)
-            y -= 12
-
-        y -= 15
-        if y < 80:
-            c.showPage()
-            y = height - 50
-
-# Notes Section with your exact text
-y -= 10
-c.setFont("Helvetica-Bold", 12)
-c.drawString(40, y, "💡 Notes")
-y -= 25
-c.setFont("Helvetica", 10)
-
-notes = """
-These colleges were suggested to you because past applicants with similar profiles and interests got into them. When building your college list, please make sure to consider a range of factors, including your class size preferences, location, campus culture, sports culture, and financial aid.
-
-Also, note that most of the top schools are committed to meeting your full demonstrated need, but do your research since there are a few exceptions! 
-
-If you found this helpful, do share our app with a friend to spread the joy of college application preparation!
-"""
-
-for line in notes.strip().split('\n'):
-    for wrapped_line in textwrap.wrap(line.strip(), width=110):
-        c.drawString(50, y, wrapped_line)
-        y -= 15
-    y -= 5
-
-c.save()
-buffer.seek(0)
 
 
         # Email PDF
