@@ -456,9 +456,8 @@ def main():
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <div style="flex-grow:1; text-align:center;">
         <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
-        <p style='color:#DAA520; font-size:1.2em; margin:0;'>Find your college application twin!</p>
+        <p style='color:#DAA520; font-size:1.2em; margin:0; line-height:1; margin-top:-8px;'>Find your college application twin!</p>
       </div>
-      
     </div>
     """, unsafe_allow_html=True)
 
