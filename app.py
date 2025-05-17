@@ -3,7 +3,7 @@ import pandas as pd
 import re
 import string
 import difflib
-st.set_page_config
+st.set_page_config(page_title="MatchMyApp", layout="wide")
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
     "a","an","the","and","or","but","if","then","with","on","in",
