@@ -183,7 +183,6 @@ def college_list_wizard(df):
     except:
         gpa_val = None
 
-    # Parse test score
     sat_val = act_val = None
     if test_score.strip().isdigit():
         sc = int(test_score.strip())
@@ -226,55 +225,50 @@ def college_list_wizard(df):
         df2 = df2[df2['Major'].str.lower() == matched_major]
         st.write(f"🔹 After Major filter (matched: {matched_major}):", df2.shape)
 
-    # EC Filtering
     ec_keys = extract_keywords(ecs)
     if ec_keys:
         df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
         st.write(f"🔹 After EC keyword filter (keywords: {ec_keys}):", df2.shape)
 
-    # Function to extract clean acceptances
+    if df2.empty:
+        st.warning("No matching profiles found.")
+        return
+
+    # School indicators and top school whitelist
+    school_indicators = ["university", "college", "institute", "school", "academy", "tech", "polytechnic"]
+    top_schools = [
+        "harvard", "yale", "princeton", "stanford", "mit", "columbia", "uchicago", "upenn", "caltech", "duke",
+        "dartmouth", "brown", "cornell", "northwestern", "vanderbilt", "jhu", "rice", "notre dame", "georgetown",
+        "emory", "berkeley", "ucla", "umich", "usc", "carnegie", "unc", "uva", "nyu", "wustl", "tufts", "wake forest",
+        "boston college", "williams", "amherst", "pomona", "swarthmore", "wellesley", "middlebury", "carleton",
+        "claremont", "haverford", "bowdoin"
+    ]
+
     def extract_clean_colleges(raw):
-        if not isinstance(raw, str): return []
-        raw = re.sub(r"\(.*?\)", "", raw)  # remove parenthetical info
+        if pd.isna(raw):
+            return []
         parts = re.split(r"[\n,]+", raw)
-        indicators = [
-            "university", "college", "institute", "school", "academy", "tech", "polytechnic", "poly"
-        ]
-        elite_names = [
-            "harvard", "princeton", "yale", "stanford", "mit", "columbia", "uchicago", "upenn", "duke",
-            "dartmouth", "brown", "northwestern", "johns hopkins", "caltech", "amherst", "swarthmore",
-            "pomona", "williams", "wellesley", "middlebury", "carleton", "claremont", "bowdoin", "colby",
-            "washington university", "vanderbilt", "rice", "cornell", "notre dame", "georgetown", "emory",
-            "ucla", "uc berkeley", "carnegie mellon", "usc", "unc", "uva", "tufts", "wake forest", "nyu"
-        ]
         cleaned = []
-        for p in parts:
-            p = p.strip()
-            if not p: continue
-            p = p[:100]  # limit length
-            name = p.split("(")[0].strip()
+        for part in parts:
+            name = part.split("(", 1)[0].strip()  # Remove parenthetical
+            if not name or len(name) > 100:
+                continue
             low = name.lower()
-            if any(ind in low for ind in indicators) or any(elite in low for elite in elite_names):
+            if any(ind in low for ind in school_indicators) or any(s in low for s in top_schools):
                 cleaned.append(name)
         return cleaned
 
-    # Apply to all matched rows
     df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
     all_schools = [school for sub in df2["cleaned_list"] for school in sub]
 
     if not all_schools:
-        st.warning("No clean acceptances found.")
+        st.warning("No recognizable college acceptances found.")
         return
 
-    # Count and display results
     counts = Counter(all_schools)
     st.markdown("#### Accepted Colleges Summary:")
     for school, cnt in counts.most_common(20):
         st.markdown(f"- **{school}** — {cnt} acceptance(s)")
-
-    if df2.empty:
-        st.warning("No matches found.")
-        return
 
     st.markdown("---\n#### Matched Profiles:")
     for _, r in df2.iterrows():
@@ -283,13 +277,14 @@ def college_list_wizard(df):
         • [{r['url']}]({r['url']})  
           GPA: {r['GPA']:.2f} | SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}  
           Major: {r['Major']} | Residency: {r['Residency_norm']}  
-          Acceptances: {r['acceptances_clean']}  
+          Acceptances: {', '.join(r['cleaned_list'])}  
           EC hits: {', '.join(ec_hits)}
         """)
 
-    # Save email
+    # Log email
     with open("emails_collected.txt", "a") as f:
         f.write(email + "\n")
+
 
 
 
