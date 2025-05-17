@@ -452,10 +452,17 @@ def college_list_wizard(df):
 # ——— Main App ———
 def main():
     st.markdown("""
+    <div style="background-color: #1ABC9C; padding: 20px; text-align: center; font-size: 1.5em; font-weight: bold; color: #000;">
+      We are taking your feedback! Click <a href="https://docs.google.com/forms/d/e/1FAIpQLSdgaCUa7S2KFfs6hUsFyDtttUZYiT46uTWtXEhhR9in8fEy6g/viewform?usp=header" target="_blank" style="color: #6A0DAD; text-decoration: underline;">here</a> to fill out a quick survey!
+    </div>
+    """, unsafe_allow_html=True)
+    st.markdown("""
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <div style="flex-grow:1; text-align:center;">
         <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
-        <p style='color:#DAA520; font-size:1.2em; margin:0; line-height:1; margin-top:-8px;'>Find your college application twin!</p>
+        <p style='color:#DAA520; font-size:1.2em; margin:0; line-height:1; margin-top:-8px; transform: translateX(-10px);'>
+          Find your college application twin!
+        </p>
       </div>
     </div>
 
@@ -470,6 +477,16 @@ def main():
 
 
     df = load_data()
+    st.markdown("""
+    <style>
+    /* For the tab labels */
+    div[role="tab"] {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+    
     tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
 
     with tabs[0]:
