@@ -157,7 +157,7 @@ def main():
     """, unsafe_allow_html=True)
 
     df = load_data()
-    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "Submit a Profile"])
+    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
 
     with tabs[0]:
         st.markdown("#### Enter your profile (leave filters blank to skip):")
