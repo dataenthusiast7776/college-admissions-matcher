@@ -244,11 +244,10 @@ def college_list_wizard(df):
         st.write(f"🔹 After EC keyword filter (keywords: {ec_keys}):", df2.shape)
         st.dataframe(df2[['parsed_ECs']].head())
 
-    # Clean acceptances
-    indicators = [
-            "university","college","institute","school",
-            "academy","tech","polytechnic","poly","mit",
-            "stanford","harvard","princeton","yale"
+        indicators = [
+            "university", "college", "institute", "school",
+            "academy", "tech", "polytechnic", "poly", "mit",
+            "stanford", "harvard", "princeton", "yale"
         ]
         parts = re.split(r"[\n,]+", raw)
         cleaned = []
@@ -264,7 +263,7 @@ def college_list_wizard(df):
                 cleaned.append(name)
         return cleaned
 
-    # apply to every post, flatten
+    # apply to every post, then flatten
     df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
     all_schools = [school for sub in df2["cleaned_list"] for school in sub]
 
