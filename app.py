@@ -180,8 +180,8 @@ import re
 import pandas as pd
 
 def college_list_wizard(df):
-    st.markdown("### 🎓 College List Wizard (DEBUG MODE)")
-    st.info("Provide your academic profile and we’ll find matching accepted colleges!")
+    st.markdown("### 🎓 College List Wizard")
+    st.info("Provide your academic profile and we’ll email you a personalized list of colleges!")
 
     # Inputs
     gpa = st.text_input("Enter your GPA (0.0–4.0):")
@@ -191,9 +191,10 @@ def college_list_wizard(df):
     domestic = st.checkbox("Domestic student? (leave unchecked for International)")
     email = st.text_input("Enter your Email:")
 
-    # Email validation (assumes is_valid_email is defined somewhere)
+    # Email validation
     if email and not is_valid_email(email):
         st.warning("Please enter a valid email address.")
+        return
 
     # Parse GPA
     try:
@@ -211,122 +212,165 @@ def college_list_wizard(df):
         elif 400 <= sc <= 1600:
             sat_val = sc
 
-    # Simple keyword match major (full major spelled out)
+    # Match major
     def match_major(user_major, majors_list):
         user_major_lower = user_major.strip().lower()
         for m in majors_list:
             if user_major_lower in m.lower():
-                return m  # return exact df major spelling
+                return m
         return None
 
     majors_list = df['Major'].dropna().unique()
     matched_major = match_major(major, majors_list)
 
-    # Match Me! button
-    match_button = st.button("Match Me!", disabled=not is_valid_email(email))
-    if not match_button:
-        return
+    if st.button("Match Me!", disabled=not is_valid_email(email)):
+        df2 = df.copy()
 
-    # Start filtering
-    df2 = df.copy()
-    st.write("🔹 Initial DataFrame:", df2.shape)
+        # Residency
+        df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)
+        target_res = "domestic" if domestic else "international"
+        df2 = df2[df2['Residency_norm'] == target_res]
 
-    # Residency
-    df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)  # assumes normalize_residency defined
-    target_res = "domestic" if domestic else "international"
-    df2 = df2[df2['Residency_norm'] == target_res]
-    st.write(f"🔹 After Residency filter ({target_res}):", df2.shape)
-    st.dataframe(df2[['Residency','Residency_norm']].head())
+        # GPA filter
+        if gpa_val is not None:
+            df2 = df2[(df2['GPA'] >= gpa_val - 0.1) & (df2['GPA'] <= gpa_val + 0.1)]
 
-    # GPA filter ±0.1
-    if gpa_val is not None:
-        df2 = df2[(df2['GPA'] >= gpa_val - 0.1) & (df2['GPA'] <= gpa_val + 0.1)]
-        st.write(f"🔹 After GPA filter (±0.1 around {gpa_val}):", df2.shape)
-        st.dataframe(df2[['GPA']].head())
+        # SAT/ACT filter
+        def sat_act_match(row):
+            sat_ok = sat_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - sat_val) <= 30
+            act_ok = act_val is not None and not pd.isna(row['ACT_Score']) and abs(row['ACT_Score'] - act_val) <= 1
+            conv_ok = act_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - act_val*45) <= 30
+            return sat_ok or act_ok or conv_ok
 
-    # SAT/ACT filter
-    def sat_act_match(row):
-        sat_ok = sat_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - sat_val) <= 30
-        act_ok = act_val is not None and not pd.isna(row['ACT_Score']) and abs(row['ACT_Score'] - act_val) <= 1
-        conv_ok = act_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - act_val*45) <= 30
-        return sat_ok or act_ok or conv_ok
+        if sat_val or act_val:
+            df2 = df2[df2.apply(sat_act_match, axis=1)]
 
-    if sat_val is not None or act_val is not None:
-        df2 = df2[df2.apply(sat_act_match, axis=1)]
-        st.write("🔹 After SAT/ACT filter:", df2.shape)
-        st.dataframe(df2[['SAT_Score','ACT_Score']].head())
+        # Major
+        if matched_major:
+            df2 = df2[df2['Major'] == matched_major]
 
-    # Major filter
-    if matched_major:
-        df2 = df2[df2['Major'] == matched_major]
-        st.write(f"🔹 After Major filter (matched: {matched_major}):", df2.shape)
-        st.dataframe(df2[['Major']].head())
-    else:
-        st.warning("Major not found in database. No major filter applied.")
+        # ECs
+        ec_keys = extract_keywords(ecs)
+        if ec_keys:
+            df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
 
-    # Extracurriculars keyword filter (assumes extract_keywords is defined)
-    ec_keys = extract_keywords(ecs)
-    if ec_keys:
-        df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
-        st.write(f"🔹 After EC keyword filter (keywords: {ec_keys}):", df2.shape)
-        st.dataframe(df2[['parsed_ECs']].head())
+        # Extract clean college names
+        def extract_clean_colleges(raw):
+            if not isinstance(raw, str) or not raw.strip():
+                return []
+            parts = re.split(r"[\n,]+", raw)
+            indicators = [
+                "university", "college", "institute", "school",
+                "academy", "tech", "polytechnic", "poly", "mit",
+                "stanford", "harvard", "princeton", "yale"
+            ]
+            cleaned = []
+            for p in parts:
+                seg = p.strip()
+                if not seg:
+                    continue
+                name = seg.split("(", 1)[0].strip()
+                low = name.lower()
+                if any(ind in low for ind in indicators):
+                    cleaned.append(name[:100])
+            return cleaned
 
-    # Extract clean acceptances after all filters are applied
-    indicators = [
-        "university", "college", "institute", "school",
-        "academy", "tech", "polytechnic", "poly", "mit",
-        "stanford", "harvard", "princeton", "yale"
-        # add more top 40 schools and top 10 LACs if you want here
-    ]
+        df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
+        all_schools = [school for sub in df2["cleaned_list"] for school in sub]
+        counts = Counter([s.lower() for s in all_schools])
 
-    def extract_clean_colleges(raw):
-        if not isinstance(raw, str) or not raw.strip():
-            return []
-        parts = re.split(r"[\n,]+", raw)
-        cleaned = []
-        for p in parts:
-            seg = p.strip()
-            if not seg:
-                continue
-            # drop comments in parentheses
-            name = seg.split("(", 1)[0].strip()
-            low = name.lower()
-            if any(ind in low for ind in indicators):
-                cleaned.append(name[:100])  # limit to 100 chars max
-        return cleaned
+        # Build PDF
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
 
-    df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
-    all_schools = [school for sub in df2["cleaned_list"] for school in sub]
+        # Title and Timestamp
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(40, height - 50, "MatchMyApp - Personalized College List")
+        c.setFont("Helvetica", 10)
+        c.drawString(40, height - 70, "Generated on: " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-    if not all_schools:
-        st.warning("No clean acceptances found.")
-        return
+        y = height - 100
 
-    # count frequency from cleaned individual college names
-    counts = Counter([school.lower() for school in all_schools])
+        # User input
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "📌 Your Inputs")
+        y -= 20
+        c.setFont("Helvetica", 10)
+        for label, value in [
+            ("GPA", gpa), ("SAT", str(sat_val) if sat_val else "N/A"),
+            ("ACT", str(act_val) if act_val else "N/A"),
+            ("Major", major), ("Residency", "Domestic" if domestic else "International"),
+            ("Email", email)
+        ]:
+            c.drawString(50, y, f"{label}: {value}")
+            y -= 15
 
-    st.markdown("#### Accepted Colleges Summary:")
-    for school, cnt in counts.most_common(20):
-        st.markdown(f"- **{school.title()}** — {cnt} acceptance(s)")
+        # Filtered Colleges
+        y -= 20
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "🎯 Matched Colleges")
+        y -= 20
+        c.setFont("Helvetica", 10)
+        for school, cnt in counts.most_common(20):
+            url = next((r['url'] for _, r in df2.iterrows() if school in str(r['acceptances']).lower()), None)
+            c.drawString(50, y, f"{school.title()} — {cnt} acceptance(s)")
+            if url:
+                y -= 12
+                c.setFont("Helvetica-Oblique", 9)
+                c.drawString(60, y, f"Reddit: {url}")
+                c.setFont("Helvetica", 10)
+            y -= 15
+            if y < 80:
+                c.showPage()
+                y = height - 50
 
-    if df2.empty:
-        st.warning("No matches found.")
-        return
+        # Reddit Information
+        y -= 10
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "🧠 Reddit Insights")
+        y -= 20
+        c.setFont("Helvetica", 9)
+        for _, row in df2.iterrows():
+            text = f"{row['url']}: GPA {row['GPA']:.2f}, SAT {row['SAT_Score']}, ACT {row['ACT_Score']}, Major {row['Major']}"
+            for line in textwrap.wrap(text, width=100):
+                c.drawString(50, y, line)
+                y -= 12
+                if y < 80:
+                    c.showPage()
+                    y = height - 50
 
-    st.markdown("---\n#### Matched Profiles:")
-    for _, r in df2.iterrows():
-        ec_hits = [kw for kw in ec_keys if kw in str(r['parsed_ECs']).lower()]
-        st.markdown(f"""
-        • [{r['url']}]({r['url']})  
-          GPA: {r['GPA']:.2f} | SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}  
-          Major: {r['Major']} | Residency: {r['Residency_norm']}  
-          Acceptances: {r['acceptances']}  
-          EC hits: {', '.join(ec_hits)}
-        """)
+        # Final Note
+        y -= 10
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(40, y, "💡 Notes")
+        y -= 20
+        c.setFont("Helvetica", 10)
+        note = "Most top colleges commit to meeting full demonstrated financial need. Research each college's policy carefully, especially for international students."
+        for line in textwrap.wrap(note, width=100):
+            c.drawString(50, y, line)
+            y -= 12
 
-    # Log email
-    with open("emails_collected.txt", "a") as f:
-        f.write(email + "\n")
+        c.save()
+        buffer.seek(0)
+
+        # Email PDF
+        try:
+            msg = EmailMessage()
+            msg["Subject"] = "Your MatchMyApp Personalized College List"
+            msg["From"] = st.secrets["EMAIL_ADDRESS"]
+            msg["To"] = email
+            msg.set_content("Attached is your personalized list of colleges based on your inputs. Good luck!")
+
+            msg.add_attachment(buffer.read(), maintype="application", subtype="pdf", filename="college_list.pdf")
+
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(st.secrets["EMAIL_ADDRESS"], st.secrets["EMAIL_APP_PASSWORD"])
+                smtp.send_message(msg)
+
+            st.success("✅ PDF sent to your email!")
+        except Exception as e:
+            st.error(f"❌ Failed to send email: {e}")
 
 
 
