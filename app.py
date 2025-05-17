@@ -191,7 +191,7 @@ def college_list_wizard(df):
     domestic = st.checkbox("Domestic student? (leave unchecked for International)")
     email = st.text_input("Enter your Email:")
 
-    # Email validation
+    # Email validation (assumes is_valid_email is defined somewhere)
     if email and not is_valid_email(email):
         st.warning("Please enter a valid email address.")
 
@@ -232,19 +232,19 @@ def college_list_wizard(df):
     st.write("🔹 Initial DataFrame:", df2.shape)
 
     # Residency
-    df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)
+    df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)  # assumes normalize_residency defined
     target_res = "domestic" if domestic else "international"
     df2 = df2[df2['Residency_norm'] == target_res]
     st.write(f"🔹 After Residency filter ({target_res}):", df2.shape)
     st.dataframe(df2[['Residency','Residency_norm']].head())
 
-    # GPA
+    # GPA filter ±0.1
     if gpa_val is not None:
         df2 = df2[(df2['GPA'] >= gpa_val - 0.1) & (df2['GPA'] <= gpa_val + 0.1)]
         st.write(f"🔹 After GPA filter (±0.1 around {gpa_val}):", df2.shape)
         st.dataframe(df2[['GPA']].head())
 
-    # SAT/ACT
+    # SAT/ACT filter
     def sat_act_match(row):
         sat_ok = sat_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - sat_val) <= 30
         act_ok = act_val is not None and not pd.isna(row['ACT_Score']) and abs(row['ACT_Score'] - act_val) <= 1
@@ -264,7 +264,7 @@ def college_list_wizard(df):
     else:
         st.warning("Major not found in database. No major filter applied.")
 
-    # Extracurriculars
+    # Extracurriculars keyword filter (assumes extract_keywords is defined)
     ec_keys = extract_keywords(ecs)
     if ec_keys:
         df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
@@ -302,25 +302,16 @@ def college_list_wizard(df):
         st.warning("No clean acceptances found.")
         return
 
-    # count frequency
-    counts = Counter(
-    df2['acceptances'].explode().dropna().str.lower()
-)
-    st.markdown("#### Accepted Colleges Summary:")
-    for school, cnt in counts.most_common(20):
-        st.markdown(f"- **{school}** — {cnt} acceptance(s)")
-
-    if df2.empty:
-        st.warning("No matches found.")
-        return
-
-    all_acceptances = df2['acceptances'].explode().dropna()
-    all_acceptances_lower = all_acceptances.str.lower()
-    counts = Counter(all_acceptances_lower)
+    # count frequency from cleaned individual college names
+    counts = Counter([school.lower() for school in all_schools])
 
     st.markdown("#### Accepted Colleges Summary:")
     for school, cnt in counts.most_common(20):
         st.markdown(f"- **{school.title()}** — {cnt} acceptance(s)")
+
+    if df2.empty:
+        st.warning("No matches found.")
+        return
 
     st.markdown("---\n#### Matched Profiles:")
     for _, r in df2.iterrows():
