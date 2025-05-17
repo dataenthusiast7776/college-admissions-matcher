@@ -357,7 +357,7 @@ def college_list_wizard(df):
         # Reddit Insights — only filtered posts, max 10
         y -= 10
         c.setFont("Helvetica-Bold", 12)
-        c.drawString(40, y, "🧠 Reddit Insights")
+        c.drawString(40, y, "🧠 Profiles Like Yours")
         y -= 25
         c.setFont("Helvetica", 9)
         
@@ -396,7 +396,7 @@ def college_list_wizard(df):
         c.setFont("Helvetica-Bold", 12)
         c.drawString(40, y, "💡 Notes")
         y -= 25
-        c.setFont("Helvetica", 12)
+        c.setFont("Helvetica", 11)
         
         notes = """
         These colleges were suggested to you because past applicants with similar profiles and interests got into them. When building your college list, please make sure to consider a range of factors, including your class size preferences, location, campus culture, sports culture, and financial aid.
