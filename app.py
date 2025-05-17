@@ -198,25 +198,58 @@ def main():
             st.info("Enter one or more college names to see matching acceptances.")
 
     with tabs[2]:
-        st.markdown("#### Submit your own profile:")
-        st.info("This form is optional and anonymous. It's for research and improving the dataset.")
+    st.markdown("### 🎓 College List Wizard")
+    st.info("Tell us about your preferences and priorities, and we’ll help you build a smart college list!")
 
-        col1, col2 = st.columns(2)
-        with col1:
-            gpa = st.number_input("Your GPA (out of 4.0)", 0.0, 4.0, step=0.01)
-            sat = st.number_input("SAT Score (optional)", 400, 1600, step=10)
-        with col2:
-            act = st.number_input("ACT Score (optional)", 1, 36, step=1)
-            url = st.text_input("Link to your Reddit post or stats summary")
+    st.markdown("#### 📚 Academic Info")
+    uw_gpa = st.number_input("Unweighted GPA (4.0 scale)", 0.0, 4.0, step=0.01)
+    
+    test_type = st.radio("Testing Info", ["SAT", "ACT", "Test Optional"], horizontal=True)
+    sat_score = act_score = None
+    if test_type == "SAT":
+        sat_score = st.number_input("SAT Score", 400, 1600, step=10)
+    elif test_type == "ACT":
+        act_score = st.number_input("ACT Score", 1, 36, step=1)
 
-        gender = st.selectbox("Gender", ["Prefer not to say","Male","Female"])
-        ethnicity = st.selectbox("Ethnicity", ["Prefer not to say","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"])
-        ecs = st.text_area("Your extracurriculars", placeholder="List your major activities")
-        acceptances = st.text_area("Colleges you were accepted to", placeholder="Comma separated")
+    st.markdown("#### 🧠 Extracurriculars")
+    ec_input = st.text_area(
+        "Briefly describe your key extracurriculars",
+        placeholder="e.g., Debate captain, National Honor Society, volunteer EMT, research internship",
+        height=100
+    )
 
-        submitted = st.button("Submit Profile")
-        if submitted:
-            st.success("Thanks for submitting! This feature is still in beta and doesn't store data yet.")
+    st.markdown("#### 💸 Financial Considerations")
+    budget = st.number_input("Estimated yearly budget for college (USD)", min_value=0, step=500)
+
+    st.markdown("#### 🌎 Environment & Fit")
+    env_pref = st.multiselect(
+        "Preferred campus setting (you can choose more than one)",
+        ["Urban", "Suburban", "Rural"]
+    )
+
+    size_pref = st.multiselect(
+        "Preferred size of school",
+        ["Small (<5,000)", "Medium (5,000–15,000)", "Large (>15,000)"]
+    )
+
+    st.markdown("#### 🌐 International Options")
+    intl_can_uk = st.checkbox("Are you open to schools in Canada, the UK, or other international options?")
+
+    st.markdown("#### ✨ Dream School")
+    dream_school = st.text_input("What’s your dream school (optional)?")
+
+    submitted = st.button("Submit Preferences")
+    if submitted:
+        st.success("Your preferences have been recorded! Personalized suggestions coming soon.")
+        st.markdown("Here’s a summary of what you entered:")
+        st.markdown(f"- **GPA**: {uw_gpa}")
+        st.markdown(f"- **Testing**: {'SAT: ' + str(sat_score) if test_type == 'SAT' else 'ACT: ' + str(act_score) if test_type == 'ACT' else 'Test Optional'}")
+        st.markdown(f"- **Extracurriculars**: {ec_input}")
+        st.markdown(f"- **Budget**: ${budget}")
+        st.markdown(f"- **Preferred Environments**: {', '.join(env_pref) if env_pref else 'No preference'}")
+        st.markdown(f"- **School Sizes**: {', '.join(size_pref) if size_pref else 'No preference'}")
+        st.markdown(f"- **Open to Intl/Canada/UK**: {'Yes' if intl_can_uk else 'No'}")
+        st.markdown(f"- **Dream School**: {dream_school or 'None'}")
 
 if __name__=="__main__":
     main()
