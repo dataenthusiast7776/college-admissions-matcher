@@ -452,11 +452,15 @@ def college_list_wizard(df):
 
 # ——— Main App ———
 def main():
-    st.set_page_config(page_title="MatchMyApp", layout="centered")
     st.markdown("""
-    <div style='text-align:center;'>
-      <h1 style='color:#6A0DAD; font-size:3em;'>MatchMyApp</h1>
-      <p style='color:#DAA520; font-size:1.2em;'>Find your college application twin!</p>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div style="flex-grow:1; text-align:center;">
+        <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
+        <p style='color:#DAA520; font-size:1.2em; margin:0;'>Find your college application twin!</p>
+      </div>
+      <div style="flex-shrink:0;">
+        <img src="assets/logo.png" style="height:60px;">
+      </div>
     </div>
     """, unsafe_allow_html=True)
 
