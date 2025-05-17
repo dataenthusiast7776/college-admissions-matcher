@@ -4,6 +4,10 @@ import re
 import string
 from difflib import get_close_matches
 from collections import Counter
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+import io
 
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
