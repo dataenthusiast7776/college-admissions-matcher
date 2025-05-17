@@ -223,3 +223,5 @@ def main():
                 "Other Intl": other_intl,
                 "Dream School": dream_school,
             })
+if __name__ == "__main__":
+    main()
