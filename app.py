@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 import difflib
 
+st.set_page_config(page_title="MatchMyApp", layout="wide")
+
 # === Data Loading ===
 @st.cache_data
 def load_data():
@@ -91,7 +93,6 @@ def match_profiles_advanced(df, gpa, sat=None, act=None, residency=None, ec_keyw
 
 # === Main App ===
 def main():
-    st.set_page_config(page_title="MatchMyApp", layout="wide")
     df = load_data()
 
     # Header
