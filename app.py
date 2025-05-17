@@ -124,14 +124,13 @@ def filter_by_colleges(df, colleges_input):
 
 @st.cache_data
 def load_data():
+    drive_url = "https://drive.google.com/uc?export=download&id=1nZtwYcUX_KraxOTAOLg6-ZvKZnKMNpSg"
     try:
-        return pd.read_csv(
-            "https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/refs/heads/main/master_data.csv"
-        )
-    except:
-        st.warning("Could not load remote data, using local master_data_with_ECs.csv")
-        return pd.read_csv("master_data_with_ECs.csv")
-
+        return pd.read_csv(drive_url)
+    except Exception as e:
+        st.warning(f"Could not load remote data from Google Drive, using local file. Error: {e}")
+        return pd.read_csv("master_data.csv")
+        
 def display_results(res):
     if res.empty:
         st.warning("0 matches found.")
