@@ -245,12 +245,38 @@ def college_list_wizard(df):
         st.dataframe(df2[['parsed_ECs']].head())
 
     # Clean acceptances
-    df2['acceptances_clean'] = df2['acceptances'].apply(
-        lambda raw: ", ".join([p.strip() for p in re.split(r"[\n,]+", raw) if p.strip()])
-    )
-    df2 = df2[df2['acceptances_clean'] != ""]
-    st.write("🔹 After cleaning acceptances:", df2.shape)
-    st.dataframe(df2[['acceptances_clean']].head())
+    indicators = [
+            "university","college","institute","school",
+            "academy","tech","polytechnic","poly","mit",
+            "stanford","harvard","princeton","yale"
+        ]
+        parts = re.split(r"[\n,]+", raw)
+        cleaned = []
+        for p in parts:
+            seg = p.strip()
+            if not seg:
+                continue
+            # drop comments in parentheses
+            name = seg.split("(", 1)[0].strip()
+            low = name.lower()
+            # keep only if it has a school indicator
+            if any(ind in low for ind in indicators):
+                cleaned.append(name)
+        return cleaned
+
+    # apply to every post, flatten
+    df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
+    all_schools = [school for sub in df2["cleaned_list"] for school in sub]
+
+    if not all_schools:
+        st.warning("No clean acceptances found.")
+        return
+
+    # count frequency
+    counts = Counter(all_schools)
+    st.markdown("#### Accepted Colleges Summary:")
+    for school, cnt in counts.most_common(20):
+        st.markdown(f"- **{school}** — {cnt} acceptance(s)")
 
     if df2.empty:
         st.warning("No matches found.")
