@@ -314,7 +314,61 @@ def college_list_wizard(df):
     # Log email
     with open("emails_collected.txt", "a") as f:
         f.write(email + "\n")
-
+        
+    def generate_pdf(user_inputs, matched_colleges, matched_profiles, logo_path="logo.png"):
+        buffer = io.BytesIO()
+        c = canvas.Canvas(buffer, pagesize=letter)
+        width, height = letter
+    
+        # Logo
+        if logo_path:
+            try:
+                logo = ImageReader(logo_path)
+                c.drawImage(logo, width - 150, height - 80, width=100, preserveAspectRatio=True, mask='auto')
+            except:
+                pass  # Fail silently if logo isn't found
+    
+        # Title
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(40, height - 50, "🎓 College List Match Report")
+    
+        y = height - 100
+        c.setFont("Helvetica", 11)
+        
+        def write_line(text, indent=0, space=15):
+            nonlocal y
+            if y < 60:
+                c.showPage()
+                y = height - 50
+            c.drawString(40 + indent, y, text)
+            y -= space
+    
+        # --- User Input Summary ---
+        write_line("Your Profile:")
+        for k, v in user_inputs.items():
+            write_line(f"{k}: {v}", indent=20)
+    
+        # --- College Summary ---
+        write_line("")
+        write_line("Top Matched Colleges:")
+        for school, count in matched_colleges:
+            write_line(f"{school} — {count} acceptance(s)", indent=20)
+    
+        # --- Matched Profiles ---
+        write_line("")
+        write_line("Matched Reddit Profiles:")
+        for profile in matched_profiles:
+            write_line(f"{profile['url']}", indent=20)
+            write_line(f"GPA: {profile['GPA']} | SAT: {profile['SAT']} | ACT: {profile['ACT']}", indent=40)
+            write_line(f"Major: {profile['Major']} | Residency: {profile['Residency']}", indent=40)
+            write_line(f"Acceptances: {profile['Acceptances']}", indent=40)
+            write_line(f"EC Hits: {profile['EC Hits']}", indent=40)
+            write_line("", indent=20)
+    
+        c.save()
+        buffer.seek(0)
+        return buffer
+    
 
 
 
