@@ -187,12 +187,21 @@ def main():
     """, unsafe_allow_html=True)
 
     st.markdown("""
-    <div style='font-size:1.05rem; color:white; margin-bottom:2.5rem; line-height:1.7; text-align:left;'>
-      Trained on real profiles from <i>r/collegeresults</i>.  
-      More features coming: essay review, extracurricular advice, & data insights!
+    <div style='text-align:center; margin-bottom:1.5rem;'>
+      <h1 style='color:#6A0DAD; font-size:3em; margin-bottom:0;'>MatchMyApp</h1>
+      <p style='color:#DAA520; font-size:1.3em; font-weight:bold;'>Find your college application twin!</p>
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown("""
+    <div style='font-size:1.05rem; color:white; margin-bottom:2.5rem; line-height:1.7; text-align:left;'>
+      Whether you're a rising senior preparing for college applications, a college data enthusiast looking for acceptance data, or a doomscroller on Reddit, this app is for you!
+      <br><br>
+      Trained on a large dataset of 2900 (and growing!) real applicant profiles sourced from <i>r/collegeresults</i>, the matching algorithm will find you your college application twin, every single time.
+      <br><br>
+      More features to come, including extracurricular advice, essay review systems, and a fun data corner for stats nerds! All supported by data, and lots of it!
+    </div>
+    """, unsafe_allow_html=True)
     df = load_data()
     tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
 
