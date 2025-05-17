@@ -69,32 +69,25 @@ def clean_acceptances(raw):
     return joined if len(joined)<=250 else ""
 
 def match_profiles(df, gpa, sat, act, eth, gen, ec_query, use_gpa=True):
-    # normalize & base filters
     df['Eth_norm'] = df['Ethnicity'].apply(normalize_ethnicity)
     df['Gen_norm'] = df['Gender'].apply(normalize_gender)
     df['acc_clean'] = df['acceptances'].apply(clean_acceptances)
     d = df[df['acc_clean']!=""].copy()
 
-    # demog filters
     if eth!="No filter":
         d = d[d['Eth_norm']==eth.lower()]
     if gen!="No filter":
         d = d[d['Gen_norm']==gen.lower()]
 
-    # GPA filter ±0.05 if enabled
     if use_gpa and gpa is not None:
         d = d[(d['GPA']>=gpa-0.05)&(d['GPA']<=gpa+0.05)]
 
-    # score filters
     if sat is not None:
         d = d[d['SAT_Score'].apply(lambda x: abs(x-sat)<=30 if not pd.isna(x) else False)]
     if act is not None:
         d = d[d['ACT_Score'].apply(lambda x: abs(x-act)<=1 if not pd.isna(x) else False)]
 
-    # init EC_matches
     d['EC_matches'] = [[] for _ in range(len(d))]
-
-    # EC keyword filtering
     if ec_query.strip():
         keywords = extract_keywords(ec_query)
         if keywords:
@@ -103,7 +96,6 @@ def match_profiles(df, gpa, sat, act, eth, gen, ec_query, use_gpa=True):
                     return False, []
                 ec_lower = ec_text.lower()
                 hits = [kw for kw in keywords if kw in ec_lower]
-                # require at least 2 hits if user provided ≥2 keywords
                 if len(keywords)>=2:
                     return (len(hits)>=2, hits)
                 return (len(hits)>=1, hits)
@@ -136,7 +128,7 @@ def display_results(res):
     else:
         st.success(f"Found {len(res)} matching profiles:")
         for _, r in res.iterrows():
-            ec_hits = r['EC_matches'] if 'EC_matches' in r.index else []
+            ec_hits = r.get('EC_matches', [])
             ec_line = f"<br><b>ECs in common:</b> {', '.join(ec_hits)}" if ec_hits else ""
             st.markdown(f"""
             <div style="font-size:14px; line-height:1.4; margin-bottom:8px;">
@@ -147,34 +139,67 @@ def display_results(res):
             </div>
             """, unsafe_allow_html=True)
 
+# ——— New College List Wizard ———
+def is_valid_email(email):
+    return re.match(r"[^@]+@[^@]+\.[^@]+", email)
+
+def college_list_wizard():
+    st.markdown("### 🎓 College List Wizard")
+    st.info("Provide your academic profile; we’ll email you a polished PDF summary!")
+
+    gpa = st.text_input("Enter your GPA (e.g. 3.8):")
+    test_score = st.text_input("Enter SAT/ACT or other test scores (optional):")
+    major = st.text_input("Intended Major:")
+    ecs = st.text_area("Describe your Extracurriculars:")
+    domestic = st.checkbox("Domestic student? (leave unchecked for International)")
+    email = st.text_input("Enter your Email:")
+
+    if email and not is_valid_email(email):
+        st.warning("Please enter a valid email address.")
+
+    # disable button until email is valid
+    match_button = st.button("Match Me!", disabled=not is_valid_email(email))
+
+    if match_button:
+        st.success("Thank you! We'll send your PDF summary shortly.")
+        st.markdown(f"""
+        - **GPA:** {gpa or 'N/A'}  
+        - **Test Scores:** {test_score or 'N/A'}  
+        - **Major:** {major or 'N/A'}  
+        - **Extracurriculars:** {ecs or 'N/A'}  
+        - **Residency:** {"Domestic" if domestic else "International"}  
+        - **Email:** {email}
+        """)
+        # here you could generate PDF & send email
+        with open("emails_collected.txt", "a") as f:
+            f.write(email + "\n")
+
+# ——— Main App ———
 def main():
+    st.set_page_config(page_title="MatchMyApp", layout="centered")
     st.markdown("""
     <div style='text-align:center; margin-bottom:1.5rem;'>
       <h1 style='color:#6A0DAD; font-size:3em; margin-bottom:0;'>MatchMyApp</h1>
-      <p style='color:#DAA520; font-size:1.3em; font-weight:bold;'>Find your college application twin!</p>
+      <p style='color:#DAA520; font-size:1.3em; font-weight:bold;'>
+        Find your college application twin!
+      </p>
     </div>
     """, unsafe_allow_html=True)
 
     st.markdown("""
     <div style='font-size:1.05rem; color:white; margin-bottom:2.5rem; line-height:1.7; text-align:left;'>
-      Whether you're a rising senior preparing for college applications, a college data enthusiast looking for acceptance data, or a doomscroller on Reddit, this app is for you!
-      <br><br>
-      Trained on a large dataset of 2900 (and growing!) real applicant profiles sourced from <i>r/collegeresults</i>, the matching algorithm will find you your college application twin, every single time.
-      <br><br>
-      More features to come, including extracurricular advice, essay review systems, and a fun data corner for stats nerds! All supported by data, and lots of it!
+      Trained on real profiles from <i>r/collegeresults</i>.  
+      More features coming: essay review, extracurricular advice, & data insights!
     </div>
     """, unsafe_allow_html=True)
 
     df = load_data()
-
     tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
 
-    # Tab 0 (existing)
+    # — Tab 0: Profile Filter —
     with tabs[0]:
-        # ... (your existing code unchanged)
-
-        # GPA filter toggle + controls
-        use_gpa = st.checkbox("Filter by GPA", value=True, help="Uncheck to ignore GPA filter")
+        st.markdown("#### Enter your profile (leave filters blank to skip):")
+        use_gpa = st.checkbox("Filter by GPA", value=True)
         if use_gpa:
             gpa_s = st.slider("GPA (max 4.0)", 0.0, 4.0, 4.0, 0.01)
             gpa_m = st.number_input("Or enter GPA manually", 0.0, 4.0, gpa_s, 0.01)
@@ -194,7 +219,6 @@ def main():
             ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"],
         )
         user_gen = st.selectbox("Gender", ["No filter","Male","Female"])
-
         ec_query = st.text_area(
             "Describe your extracurriculars:",
             placeholder="e.g., robotics club, varsity soccer, volunteer tutoring",
@@ -208,65 +232,19 @@ def main():
         )
         display_results(res)
 
-    # Tab 1 (existing)
+    # — Tab 1: Filter by College Acceptances —
     with tabs[1]:
-        st.markdown("#### Filter profiles accepted to the following college(s) (comma separated):")
-        college_input = st.text_input("Enter college name(s)")
+        st.markdown("#### Filter profiles accepted to the following college(s):")
+        college_input = st.text_input("Enter college name(s), comma‑separated:")
         if college_input.strip():
             res = filter_by_colleges(df, college_input)
             display_results(res)
         else:
             st.info("Enter one or more college names to see matching acceptances.")
 
-    # Tab 2 (NEW College List Wizard) - independent, no relation to tab 0 or 1
+    # — Tab 2: College List Wizard (Independent) —
     with tabs[2]:
-        st.markdown("### College List Wizard")
-
-        # Example inputs for the wizard (customize to your needs)
-        num_colleges = st.number_input("Number of colleges to generate", min_value=1, max_value=20, value=5, step=1)
-
-        # Input: basic filters for college list wizard, no GPA or financial filters or qualitative fields
-        majors_interest = st.text_input("Enter intended major(s) (comma separated)", placeholder="e.g., Computer Science, Biology")
-
-        preferred_region = st.selectbox(
-            "Preferred region",
-            ["No preference", "Northeast", "Midwest", "South", "West", "International"]
-        )
-
-        # Example logic: here you generate a dummy list of colleges (or pull from a static list you define),
-        # filtered by majors and region - completely separate from your df or other tabs.
-        # For demo, let's create a small static sample data:
-
-        sample_colleges = [
-            {"name": "Massachusetts Institute of Technology", "region": "Northeast", "majors": ["Computer Science", "Engineering", "Physics"]},
-            {"name": "Stanford University", "region": "West", "majors": ["Computer Science", "Biology", "Economics"]},
-            {"name": "University of Chicago", "region": "Midwest", "majors": ["Economics", "Mathematics", "Philosophy"]},
-            {"name": "Duke University", "region": "South", "majors": ["Biology", "Public Policy", "Psychology"]},
-            {"name": "University of Toronto", "region": "International", "majors": ["Computer Science", "Engineering", "Medicine"]},
-            {"name": "University of Michigan", "region": "Midwest", "majors": ["Engineering", "Biology", "Business"]},
-            {"name": "Columbia University", "region": "Northeast", "majors": ["Literature", "History", "Political Science"]},
-            {"name": "University of California, Berkeley", "region": "West", "majors": ["Computer Science", "Physics", "Chemistry"]},
-        ]
-
-        # Filter colleges based on inputs
-        filtered_colleges = []
-        majors_filter = [m.strip().lower() for m in majors_interest.split(",") if m.strip()]
-        for c in sample_colleges:
-            region_match = (preferred_region == "No preference" or c["region"] == preferred_region)
-            majors_match = (not majors_filter or any(m in [maj.lower() for maj in c["majors"]] for m in majors_filter))
-            if region_match and majors_match:
-                filtered_colleges.append(c)
-
-        # Limit to requested number
-        filtered_colleges = filtered_colleges[:num_colleges]
-
-        if filtered_colleges:
-            st.markdown(f"#### Recommended Colleges ({len(filtered_colleges)})")
-            for c in filtered_colleges:
-                st.write(f"**{c['name']}** — Region: {c['region']} — Majors: {', '.join(c['majors'])}")
-        else:
-            st.info("No colleges match your criteria.")
-
+        college_list_wizard()
 
 if __name__=="__main__":
     main()
