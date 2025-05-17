@@ -462,7 +462,6 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     <div style="margin-top: 30px; max-width: 700px; margin-left: auto; margin-right: auto;">
-    st.markdown("""
     <div style="display: flex; justify-content: space-between; align-items: center;">
       <div style="flex-grow:1; text-align:center;">
         <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
