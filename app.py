@@ -325,7 +325,7 @@ def college_list_wizard(df):
         y -= 25
         
         c.setFont("Helvetica-Bold", 11)
-        max_colleges = 20
+        max_colleges = 10
         for school, cnt in counts.most_common(max_colleges):
             college_name = school.title()
             text = f"{college_name} — {cnt} acceptance(s)"
@@ -389,13 +389,14 @@ def college_list_wizard(df):
                 if y < 80:
                     c.showPage()
                     y = height - 50
+                    c.setFont("Helvetica", 9)
         
         # Notes Section with your exact text
         y -= 10
         c.setFont("Helvetica-Bold", 12)
         c.drawString(40, y, "💡 Notes")
         y -= 25
-        c.setFont("Helvetica", 10)
+        c.setFont("Helvetica", 12)
         
         notes = """
         These colleges were suggested to you because past applicants with similar profiles and interests got into them. When building your college list, please make sure to consider a range of factors, including your class size preferences, location, campus culture, sports culture, and financial aid.
