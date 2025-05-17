@@ -2,10 +2,7 @@ import streamlit as st
 import pandas as pd
 import re
 import string
-import difflib
 
-st.cache_data.clear()
-st.set_page_config(page_title="MatchMyApp", layout="wide")
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
     "a","an","the","and","or","but","if","then","with","on","in",
@@ -71,15 +68,14 @@ def clean_acceptances(raw):
     joined = ", ".join(good)
     return joined if len(joined)<=250 else ""
 
-# ——— Tab 0 Matcher ———
 def match_profiles(df, gpa, sat, act, eth, gen, ec_query, use_gpa=True):
-    df = df.copy()
+    # normalize & base filters
     df['Eth_norm'] = df['Ethnicity'].apply(normalize_ethnicity)
     df['Gen_norm'] = df['Gender'].apply(normalize_gender)
     df['acc_clean'] = df['acceptances'].apply(clean_acceptances)
     d = df[df['acc_clean']!=""].copy()
 
-    # Demographics
+    # demog filters
     if eth!="No filter":
         d = d[d['Eth_norm']==eth.lower()]
     if gen!="No filter":
@@ -89,14 +85,16 @@ def match_profiles(df, gpa, sat, act, eth, gen, ec_query, use_gpa=True):
     if use_gpa and gpa is not None:
         d = d[(d['GPA']>=gpa-0.05)&(d['GPA']<=gpa+0.05)]
 
-    # Score filters
+    # score filters
     if sat is not None:
         d = d[d['SAT_Score'].apply(lambda x: abs(x-sat)<=30 if not pd.isna(x) else False)]
     if act is not None:
         d = d[d['ACT_Score'].apply(lambda x: abs(x-act)<=1 if not pd.isna(x) else False)]
 
-    # EC matches
+    # init EC_matches
     d['EC_matches'] = [[] for _ in range(len(d))]
+
+    # EC keyword filtering
     if ec_query.strip():
         keywords = extract_keywords(ec_query)
         if keywords:
@@ -105,6 +103,7 @@ def match_profiles(df, gpa, sat, act, eth, gen, ec_query, use_gpa=True):
                     return False, []
                 ec_lower = ec_text.lower()
                 hits = [kw for kw in keywords if kw in ec_lower]
+                # require at least 2 hits if user provided ≥2 keywords
                 if len(keywords)>=2:
                     return (len(hits)>=2, hits)
                 return (len(hits)>=1, hits)
@@ -114,43 +113,13 @@ def match_profiles(df, gpa, sat, act, eth, gen, ec_query, use_gpa=True):
 
     return d[['url','GPA','SAT_Score','ACT_Score','Ethnicity','Gender','acc_clean','EC_matches']]
 
-# ——— Tab 1 Filter ———
 def filter_by_colleges(df, colleges_input):
     cols = [c.strip().lower() for c in colleges_input.split(",") if c.strip()]
-    d = df[df['acc_clean']!=""].copy()
+    d = df[df['acc_clean']!=""]
     for c in cols:
         d = d[d['acc_clean'].str.lower().str.contains(c, na=False)]
     return d[['url','GPA','SAT_Score','ACT_Score','Ethnicity','Gender','acc_clean','parsed_ECs']]
 
-# ——— Tab 2 Advanced Matcher ———
-def match_profiles_advanced(df, gpa, sat=None, act=None, residency=None, ec_keywords=None, major_keywords=None):
-    d = df.copy()
-    d = d[d["GPA"] >= gpa - 0.2]
-    if sat is not None:
-        d = d[d["SAT_Score"] >= sat - 40]
-    if act is not None:
-        d = d[d["ACT_Score"] >= act - 2]
-    if residency:
-        d = d[d["Residency"].str.lower() == residency.lower()]
-
-    if ec_keywords:
-        d["ec_score"] = d["parsed_ECs"].apply(
-            lambda x: difflib.SequenceMatcher(None, ec_keywords.lower(), str(x).lower()).ratio()
-        )
-    else:
-        d["ec_score"] = 0.5
-
-    if major_keywords:
-        d["major_score"] = d["Major"].apply(
-            lambda x: difflib.SequenceMatcher(None, major_keywords.lower(), str(x).lower()).ratio()
-        )
-    else:
-        d["major_score"] = 0.5
-
-    d["match_score"] = (d["ec_score"] + d["major_score"]) / 2
-    return d.sort_values("match_score", ascending=False).head(10)
-
-# ——— Data Loader ———
 @st.cache_data
 def load_data():
     try:
@@ -161,14 +130,13 @@ def load_data():
         st.warning("Could not load remote data, using local master_data_with_ECs.csv")
         return pd.read_csv("master_data_with_ECs.csv")
 
-# ——— Display for Tabs 0 & 1 ———
 def display_results(res):
     if res.empty:
         st.warning("0 matches found.")
     else:
         st.success(f"Found {len(res)} matching profiles:")
         for _, r in res.iterrows():
-            ec_hits = r.get('EC_matches', [])
+            ec_hits = r['EC_matches'] if 'EC_matches' in r.index else []
             ec_line = f"<br><b>ECs in common:</b> {', '.join(ec_hits)}" if ec_hits else ""
             st.markdown(f"""
             <div style="font-size:14px; line-height:1.4; margin-bottom:8px;">
@@ -179,7 +147,6 @@ def display_results(res):
             </div>
             """, unsafe_allow_html=True)
 
-# ——— Main App ———
 def main():
     st.markdown("""
     <div style='text-align:center; margin-bottom:1.5rem;'>
@@ -199,40 +166,43 @@ def main():
     """, unsafe_allow_html=True)
 
     df = load_data()
-    tabs = st.tabs([
-        "Profile Filter",
-        "Filter by College Acceptances",
-        "College List Wizard"
-    ])
+    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances"])
 
-    # Tab 0
     with tabs[0]:
         st.markdown("#### Enter your profile (leave filters blank to skip):")
-        use_gpa = st.checkbox("Filter by GPA", value=True, key="use_gpa_0")
+
+        # GPA filter toggle + controls
+        use_gpa = st.checkbox("Filter by GPA", value=True, help="Uncheck to ignore GPA filter")
         if use_gpa:
-            gpa_s = st.slider("GPA (max 4.0)", 0.0, 4.0, 4.0, 0.01, key="gpa_slider_0")
-            gpa_m = st.number_input("Or enter GPA manually", 0.0, 4.0, gpa_s, 0.01, key="gpa_manual_0")
+            gpa_s = st.slider("GPA (max 4.0)", 0.0, 4.0, 4.0, 0.01)
+            gpa_m = st.number_input("Or enter GPA manually", 0.0, 4.0, gpa_s, 0.01)
             user_gpa = gpa_m if gpa_m != gpa_s else gpa_s
         else:
             user_gpa = None
 
-        score_choice = st.selectbox("Score filter", ["No filter","SAT","ACT"], key="score_0")
+        # Score filter
+        score_choice = st.selectbox("Score filter", ["No filter","SAT","ACT"])
         user_sat = user_act = None
         if score_choice=="SAT":
-            user_sat = st.number_input("SAT Score",400,1600,1580,10, key="sat_0")
+            user_sat = st.number_input("SAT Score",400,1600,1580,10)
         elif score_choice=="ACT":
-            user_act = st.number_input("ACT Score",1,36,35,1, key="act_0")
+            user_act = st.number_input("ACT Score",1,36,35,1)
 
-        user_eth = st.selectbox("Ethnicity", ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"], key="eth_0")
-        user_gen = st.selectbox("Gender", ["No filter","Male","Female"], key="gen_0")
+        # Demographics
+        user_eth = st.selectbox(
+            "Ethnicity",
+            ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"],
+        )
+        user_gen = st.selectbox("Gender", ["No filter","Male","Female"])
 
+        # EC input
         ec_query = st.text_area(
             "Describe your extracurriculars:",
             placeholder="e.g., robotics club, varsity soccer, volunteer tutoring",
             height=80,
-            key="ec_0"
         )
 
+        # Run profile match
         res = match_profiles(
             df, user_gpa, user_sat, user_act,
             user_eth, user_gen, ec_query,
@@ -240,109 +210,14 @@ def main():
         )
         display_results(res)
 
-    # Tab 1
     with tabs[1]:
         st.markdown("#### Filter profiles accepted to the following college(s) (comma separated):")
-        college_input = st.text_input("Enter college name(s)", key="colleges_1")
+        college_input = st.text_input("Enter college name(s)")
         if college_input.strip():
             res = filter_by_colleges(df, college_input)
             display_results(res)
         else:
             st.info("Enter one or more college names to see matching acceptances.")
-
-    with tabs[2]:
-        st.header("🎯 College Matchmaker")
-        st.markdown("Find schools where students like you got in!")
-    
-        # 1) GPA
-        gpa = st.slider(
-            "Your GPA (max 4.0)",
-            0.0, 4.0, 4.0, 0.01,
-            key="tab2_gpa"
-        )
-    
-        # 2) Test Type
-        score_type = st.selectbox(
-            "Test Type",
-            ["None", "SAT", "ACT"],
-            key="tab2_score_type"
-        )
-        sat_wiz = act_wiz = None
-        if score_type == "SAT":
-            sat_wiz = st.number_input(
-                "SAT Score",
-                400, 1600, 1500, 10,
-                key="tab2_sat"
-            )
-        elif score_type == "ACT":
-            act_wiz = st.number_input(
-                "ACT Score",
-                1, 36, 34, 1,
-                key="tab2_act"
-            )
-    
-        # 3) Residency
-        residency = st.selectbox(
-            "Are you applying as a...",
-            ["Domestic", "International"],
-            key="tab2_residency"
-        )
-    
-        # 4) EC Keywords
-        ec_wiz = st.text_area(
-            "Your extracurriculars (keywords):",
-            placeholder="e.g. math club, research",
-            height=60,
-            key="tab2_ec"
-        )
-    
-        # 5) Intended Major
-        major_wiz = st.text_input(
-            "Intended Major (optional):",
-            placeholder="e.g. Computer Science",
-            key="tab2_major"
-        )
-    
-        # 6) Email
-        email = st.text_input(
-            "Your Email (to receive a PDF summary):",
-            placeholder="you@example.com",
-            key="tab2_email"
-        )
-    
-        # 7) Match Button
-        match_btn = st.button(
-            "🎉 Match Me!",
-            key="tab2_match_btn"
-        )
-    
-        if match_btn:
-            if not email or "@" not in email:
-                st.error("Please enter a valid email to see your matches.")
-            else:
-                matches = match_profiles_advanced(
-                    df,
-                    gpa=gpa,
-                    sat=sat_wiz,
-                    act=act_wiz,
-                    residency=residency,
-                    ec_keywords=ec_wiz,
-                    major_keywords=major_wiz,
-                )
-                if matches.empty:
-                    st.warning("No matches found. Try adjusting your profile.")
-                else:
-                    st.success("🎓 Top Matches Based on Your Profile:")
-                    for _, r in matches.iterrows():
-                        st.markdown(
-                            f"**{r['title']}** — GPA: {r['GPA']:.2f} | "
-                            f"SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}<br>"
-                            f"Major: {r['Major']} | ECs: {r['parsed_ECs']} | "
-                            f"Residency: {r['Residency']}",
-                            unsafe_allow_html=True
-                        )
-                    with open("emails_collected.txt", "a") as f:
-                        f.write(email.strip() + "\n")
 
 if __name__=="__main__":
     main()
