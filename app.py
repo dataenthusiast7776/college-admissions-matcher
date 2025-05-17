@@ -248,26 +248,72 @@ def main():
         else:
             st.info("Enter one or more college names to see matching acceptances.")
 
-    # Tab 2
     with tabs[2]:
         st.header("🎯 College Matchmaker")
         st.markdown("Find schools where students like you got in!")
-
-        gpa = st.slider("Your GPA (max 4.0)", 0.0, 4.0, 4.0, 0.01, key="gpa_2")
-        score_type = st.selectbox("Test Type", ["None","SAT","ACT"], key="score_2")
+    
+        # GPA input
+        gpa = st.slider(
+            "Your GPA (max 4.0)",
+            0.0, 4.0, 4.0, 0.01,
+            key="gpa_tab2"
+        )
+    
+        # Test score input
+        score_type = st.selectbox(
+            "Test Type",
+            ["None", "SAT", "ACT"],
+            key="score_tab2"
+        )
         sat_wiz = act_wiz = None
-        if score_type=="SAT":
-            sat_wiz = st.number_input("SAT Score",400,1600,1500,10, key="sat_2")
-        elif score_type=="ACT":
-            act_wiz = st.number_input("ACT Score",1,36,34,1, key="act_2")
-
-        residency = st.selectbox("Are you applying as a...", ["Domestic","International"], key="res_2")
-        ec_wiz = st.text_area("Your extracurriculars (keywords):", placeholder="e.g. math club, research", height=60, key="ec_2")
-        major_wiz = st.text_input("Intended Major (optional):", placeholder="e.g. Computer Science", key="major_2")
-
-        email = st.text_input("Your Email (to receive a PDF summary):", placeholder="you@example.com", key="email_2")
-        match_btn = st.button("🎉 Match Me!", key="btn_2")
-
+        if score_type == "SAT":
+            sat_wiz = st.number_input(
+                "SAT Score",
+                400, 1600, 1500, 10,
+                key="sat_tab2"
+            )
+        elif score_type == "ACT":
+            act_wiz = st.number_input(
+                "ACT Score",
+                1, 36, 34, 1,
+                key="act_tab2"
+            )
+    
+        # Residency selector
+        residency = st.selectbox(
+            "Are you applying as a...",
+            ["Domestic", "International"],
+            key="residency_tab2"
+        )
+    
+        # Extracurriculars keywords
+        ec_wiz = st.text_area(
+            "Your extracurriculars (keywords):",
+            placeholder="e.g. math club, research",
+            height=60,
+            key="ec_tab2"
+        )
+    
+        # Intended major
+        major_wiz = st.text_input(
+            "Intended Major (optional):",
+            placeholder="e.g. Computer Science",
+            key="major_tab2"
+        )
+    
+        # Email for PDF summary
+        email = st.text_input(
+            "Your Email (to receive a PDF summary):",
+            placeholder="you@example.com",
+            key="email_tab2"
+        )
+    
+        # Trigger matching
+        match_btn = st.button(
+            "🎉 Match Me!",
+            key="match_btn_tab2"
+        )
+    
         if match_btn:
             if not email or "@" not in email:
                 st.error("Please enter a valid email to see your matches.")
@@ -279,21 +325,22 @@ def main():
                     act=act_wiz,
                     residency=residency,
                     ec_keywords=ec_wiz,
-                    major_keywords=major_wiz
+                    major_keywords=major_wiz,
                 )
                 if matches.empty:
                     st.warning("No matches found. Try adjusting your profile.")
                 else:
                     st.success("🎓 Top Matches Based on Your Profile:")
-                    # Reuse the same display format
                     for _, r in matches.iterrows():
                         st.markdown(
-                            f"**{r['title']}** — GPA: {r['GPA']:.2f} | SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}<br>"
-                            f"Major: {r['Major']} | ECs: {r['parsed_ECs']} | Residency: {r['Residency']}",
+                            f"**{r['title']}** — GPA: {r['GPA']:.2f} | "
+                            f"SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}<br>"
+                            f"Major: {r['Major']} | ECs: {r['parsed_ECs']} | "
+                            f"Residency: {r['Residency']}",
                             unsafe_allow_html=True
                         )
-                    # Log the email
-                    with open("emails_collected.txt","a") as f:
+                    # Save email locally
+                    with open("emails_collected.txt", "a") as f:
                         f.write(email.strip() + "\n")
 
 if __name__=="__main__":
