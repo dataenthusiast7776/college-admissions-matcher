@@ -166,10 +166,12 @@ def main():
     """, unsafe_allow_html=True)
 
     df = load_data()
-    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances"])
 
+    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
+
+    # Tab 0 (existing)
     with tabs[0]:
-        st.markdown("#### Enter your profile (leave filters blank to skip):")
+        # ... (your existing code unchanged)
 
         # GPA filter toggle + controls
         use_gpa = st.checkbox("Filter by GPA", value=True, help="Uncheck to ignore GPA filter")
@@ -180,7 +182,6 @@ def main():
         else:
             user_gpa = None
 
-        # Score filter
         score_choice = st.selectbox("Score filter", ["No filter","SAT","ACT"])
         user_sat = user_act = None
         if score_choice=="SAT":
@@ -188,21 +189,18 @@ def main():
         elif score_choice=="ACT":
             user_act = st.number_input("ACT Score",1,36,35,1)
 
-        # Demographics
         user_eth = st.selectbox(
             "Ethnicity",
             ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"],
         )
         user_gen = st.selectbox("Gender", ["No filter","Male","Female"])
 
-        # EC input
         ec_query = st.text_area(
             "Describe your extracurriculars:",
             placeholder="e.g., robotics club, varsity soccer, volunteer tutoring",
             height=80,
         )
 
-        # Run profile match
         res = match_profiles(
             df, user_gpa, user_sat, user_act,
             user_eth, user_gen, ec_query,
@@ -210,6 +208,7 @@ def main():
         )
         display_results(res)
 
+    # Tab 1 (existing)
     with tabs[1]:
         st.markdown("#### Filter profiles accepted to the following college(s) (comma separated):")
         college_input = st.text_input("Enter college name(s)")
@@ -218,6 +217,56 @@ def main():
             display_results(res)
         else:
             st.info("Enter one or more college names to see matching acceptances.")
+
+    # Tab 2 (NEW College List Wizard) - independent, no relation to tab 0 or 1
+    with tabs[2]:
+        st.markdown("### College List Wizard")
+
+        # Example inputs for the wizard (customize to your needs)
+        num_colleges = st.number_input("Number of colleges to generate", min_value=1, max_value=20, value=5, step=1)
+
+        # Input: basic filters for college list wizard, no GPA or financial filters or qualitative fields
+        majors_interest = st.text_input("Enter intended major(s) (comma separated)", placeholder="e.g., Computer Science, Biology")
+
+        preferred_region = st.selectbox(
+            "Preferred region",
+            ["No preference", "Northeast", "Midwest", "South", "West", "International"]
+        )
+
+        # Example logic: here you generate a dummy list of colleges (or pull from a static list you define),
+        # filtered by majors and region - completely separate from your df or other tabs.
+        # For demo, let's create a small static sample data:
+
+        sample_colleges = [
+            {"name": "Massachusetts Institute of Technology", "region": "Northeast", "majors": ["Computer Science", "Engineering", "Physics"]},
+            {"name": "Stanford University", "region": "West", "majors": ["Computer Science", "Biology", "Economics"]},
+            {"name": "University of Chicago", "region": "Midwest", "majors": ["Economics", "Mathematics", "Philosophy"]},
+            {"name": "Duke University", "region": "South", "majors": ["Biology", "Public Policy", "Psychology"]},
+            {"name": "University of Toronto", "region": "International", "majors": ["Computer Science", "Engineering", "Medicine"]},
+            {"name": "University of Michigan", "region": "Midwest", "majors": ["Engineering", "Biology", "Business"]},
+            {"name": "Columbia University", "region": "Northeast", "majors": ["Literature", "History", "Political Science"]},
+            {"name": "University of California, Berkeley", "region": "West", "majors": ["Computer Science", "Physics", "Chemistry"]},
+        ]
+
+        # Filter colleges based on inputs
+        filtered_colleges = []
+        majors_filter = [m.strip().lower() for m in majors_interest.split(",") if m.strip()]
+        for c in sample_colleges:
+            region_match = (preferred_region == "No preference" or c["region"] == preferred_region)
+            majors_match = (not majors_filter or any(m in [maj.lower() for maj in c["majors"]] for m in majors_filter))
+            if region_match and majors_match:
+                filtered_colleges.append(c)
+
+        # Limit to requested number
+        filtered_colleges = filtered_colleges[:num_colleges]
+
+        if filtered_colleges:
+            st.markdown(f"#### Recommended Colleges ({len(filtered_colleges)})")
+            for c in filtered_colleges:
+                st.write(f"**{c['name']}** — Region: {c['region']} — Majors: {', '.join(c['majors'])}")
+        else:
+            st.info("No colleges match your criteria.")
+
 
 if __name__=="__main__":
     main()
