@@ -6,7 +6,7 @@ st.set_page_config(page_title="Fun Data Corner", layout="wide")
 
 @st.cache_data
 def load_and_prepare_data():
-    df = pd.read_csv("master_data.csv")
+    df = pd.read_csv("https://drive.google.com/uc?export=download&id=1nZtwYcUX_KraxOTAOLg6-ZvKZnKMNpSg")
 
     # Normalize into four racial groups
     def norm_race(e):
