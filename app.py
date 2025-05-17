@@ -199,8 +199,9 @@ def main():
 
     with tabs[2]:
         st.markdown("### 🎓 College List Wizard")
-        st.info("Tell us about your preferences and priorities, and we’ll help you build a smart college list!")
-
+        st.info("Provide your academic info, intended major, and extracurriculars — we’ll suggest the best-fit colleges based on data!")
+    
+        # Academic info
         st.markdown("#### 📚 Academic Info")
         uw_gpa = st.number_input("Unweighted GPA (4.0 scale)", 0.0, 4.0, step=0.01)
     
@@ -211,45 +212,33 @@ def main():
         elif test_type == "ACT":
             act_score = st.number_input("ACT Score", 1, 36, step=1)
     
+        # Domestic vs International selector
+        residency = st.radio("Residency Status", ["Domestic", "International"])
+    
+        # Major input
+        st.markdown("#### 🎓 Intended Major")
+        intended_major = st.text_input(
+            "Enter your intended major or field of study",
+            placeholder="e.g., Computer Science, Biology, Economics"
+        )
+    
+        # Extracurriculars free text
         st.markdown("#### 🧠 Extracurriculars")
         ec_input = st.text_area(
-            "Briefly describe your key extracurriculars",
+            "Briefly describe your key extracurricular activities",
             placeholder="e.g., Debate captain, National Honor Society, volunteer EMT, research internship",
             height=100
         )
     
-        st.markdown("#### 💸 Financial Considerations")
-        budget = st.number_input("Estimated yearly budget for college (USD)", min_value=0, step=500)
-    
-        st.markdown("#### 🌎 Environment & Fit")
-        env_pref = st.multiselect(
-            "Preferred campus setting (you can choose more than one)",
-            ["Urban", "Suburban", "Rural"]
-        )
-    
-        size_pref = st.multiselect(
-            "Preferred size of school",
-            ["Small (<5,000)", "Medium (5,000–15,000)", "Large (>15,000)"]
-        )
-    
-        st.markdown("#### 🌐 International Options")
-        intl_can_uk = st.checkbox("Are you open to schools in Canada, the UK, or other international options?")
-    
-        st.markdown("#### ✨ Dream School")
-        dream_school = st.text_input("What’s your dream school (optional)?")
-    
         submitted = st.button("Submit Preferences")
         if submitted:
-            st.success("Your preferences have been recorded! Personalized suggestions coming soon.")
-            st.markdown("Here’s a summary of what you entered:")
-            st.markdown(f"- **GPA**: {uw_gpa}")
-            st.markdown(f"- **Testing**: {'SAT: ' + str(sat_score) if test_type == 'SAT' else 'ACT: ' + str(act_score) if test_type == 'ACT' else 'Test Optional'}")
-            st.markdown(f"- **Extracurriculars**: {ec_input}")
-            st.markdown(f"- **Budget**: ${budget}")
-            st.markdown(f"- **Preferred Environments**: {', '.join(env_pref) if env_pref else 'No preference'}")
-            st.markdown(f"- **School Sizes**: {', '.join(size_pref) if size_pref else 'No preference'}")
-            st.markdown(f"- **Open to Intl/Canada/UK**: {'Yes' if intl_can_uk else 'No'}")
-            st.markdown(f"- **Dream School**: {dream_school or 'None'}")
+            st.success("Your preferences have been recorded! Personalized college list coming soon.")
+            st.markdown("### Here’s what you entered:")
+            st.markdown(f"- **GPA:** {uw_gpa}")
+            st.markdown(f"- **Testing:** {'SAT: ' + str(sat_score) if test_type == 'SAT' else 'ACT: ' + str(act_score) if test_type == 'ACT' else 'Test Optional'}")
+            st.markdown(f"- **Residency:** {residency}")
+            st.markdown(f"- **Intended Major:** {intended_major or 'Not specified'}")
+            st.markdown(f"- **Extracurriculars:** {ec_input or 'Not specified'}")
 
 if __name__=="__main__":
     main()
