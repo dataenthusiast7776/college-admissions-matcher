@@ -137,7 +137,7 @@ def display_results(res):
               Ethnicity: {r['Ethnicity']} | Gender: {r['Gender']}<br>
               Acceptances: {r['acc_clean']}{ec_line}
             </div>
-            """, unsafe_allow_html=True
+            """, unsafe_allow_html=True)
             
 def load_data():
     url = "https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/refs/heads/main/master_data.csv"
