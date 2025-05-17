@@ -443,7 +443,7 @@ def college_list_wizard(df):
                 smtp.login(st.secrets["EMAIL_ADDRESS"], st.secrets["EMAIL_APP_PASSWORD"])
                 smtp.send_message(msg)
 
-            st.success("✅ PDF sent to your email!")
+            st.success("✅ PDF sent to your email! If it’s playing hide and seek, check your Spam folder just in case. ")
         except Exception as e:
             st.error(f"❌ Failed to send email: {e}")
 
