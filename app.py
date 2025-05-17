@@ -164,7 +164,7 @@ def fuzzy_match_major(user_major, majors_list, cutoff=0.6):
 from collections import Counter
 
 def college_list_wizard(df):
-    st.markdown("### 🎓 College List Wizard")
+    st.markdown("### 🎓 College List Wizard (DEBUG MODE)")
     st.info("Provide your academic profile and we’ll find matching accepted colleges!")
 
     # Inputs
@@ -178,7 +178,6 @@ def college_list_wizard(df):
     if email and not is_valid_email(email):
         st.warning("Please enter a valid email address.")
 
-    # Parse GPA
     try:
         gpa_val = float(gpa)
     except:
@@ -194,95 +193,104 @@ def college_list_wizard(df):
         elif 400 <= sc <= 1600:
             sat_val = sc
 
-    # Fuzzy major match
     majors_list = df['Major'].dropna().unique()
     matched_major = fuzzy_match_major(major, majors_list)
 
-    # Match Me!
-    if not st.button("Match Me!", disabled=not is_valid_email(email)):
+    match_button = st.button("Match Me!", disabled=not is_valid_email(email))
+    if not match_button:
         return
 
     df2 = df.copy()
+    st.write("🔹 Initial DataFrame:", df2.shape)
 
-    # Residency Filter
     df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)
     target_res = "domestic" if domestic else "international"
     df2 = df2[df2['Residency_norm'] == target_res]
+    st.write(f"🔹 After Residency filter ({target_res}):", df2.shape)
 
-    # GPA Filter
     if gpa_val is not None:
         df2 = df2[(df2['GPA'] >= gpa_val - 0.1) & (df2['GPA'] <= gpa_val + 0.1)]
+        st.write(f"🔹 After GPA filter (±0.1 around {gpa_val}):", df2.shape)
 
-    # SAT/ACT Filter
     def sat_act_match(row):
         sat_ok = sat_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - sat_val) <= 30
         act_ok = act_val is not None and not pd.isna(row['ACT_Score']) and abs(row['ACT_Score'] - act_val) <= 1
-        conv_ok = act_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - act_val*45) <= 30
+        conv_ok = act_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - act_val * 45) <= 30
         return sat_ok or act_ok or conv_ok
 
     if sat_val is not None or act_val is not None:
         df2 = df2[df2.apply(sat_act_match, axis=1)]
+        st.write("🔹 After SAT/ACT filter:", df2.shape)
 
-    # Major Filter
     if matched_major:
         df2 = df2[df2['Major'].str.lower() == matched_major]
+        st.write(f"🔹 After Major filter (matched: {matched_major}):", df2.shape)
 
-    # EC Keywords Filter
+    # EC Filtering
     ec_keys = extract_keywords(ecs)
-    generic_college_words = {"college", "university", "institute", "school", "academy", "polytechnic", "tech"}
     if ec_keys:
-        # Avoid filtering ECs using specific college names
-        df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(
-            kw in str(txt).lower() for kw in ec_keys if kw not in generic_college_words))]
-    
-    if df2.empty:
-        st.warning("No matches found.")
-        return
+        df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
+        st.write(f"🔹 After EC keyword filter (keywords: {ec_keys}):", df2.shape)
 
-    # Acceptance Extraction Function
+    # Function to extract clean acceptances
     def extract_clean_colleges(raw):
-        if not isinstance(raw, str):
-            return []
-        indicators = {"university", "college", "institute", "school", "academy", "tech", "polytechnic"}
+        if not isinstance(raw, str): return []
+        raw = re.sub(r"\(.*?\)", "", raw)  # remove parenthetical info
         parts = re.split(r"[\n,]+", raw)
+        indicators = [
+            "university", "college", "institute", "school", "academy", "tech", "polytechnic", "poly"
+        ]
+        elite_names = [
+            "harvard", "princeton", "yale", "stanford", "mit", "columbia", "uchicago", "upenn", "duke",
+            "dartmouth", "brown", "northwestern", "johns hopkins", "caltech", "amherst", "swarthmore",
+            "pomona", "williams", "wellesley", "middlebury", "carleton", "claremont", "bowdoin", "colby",
+            "washington university", "vanderbilt", "rice", "cornell", "notre dame", "georgetown", "emory",
+            "ucla", "uc berkeley", "carnegie mellon", "usc", "unc", "uva", "tufts", "wake forest", "nyu"
+        ]
         cleaned = []
         for p in parts:
-            seg = re.sub(r"\(.*?\)", "", p).strip()
-            if not seg:
-                continue
-            low = seg.lower()
-            if any(ind in low for ind in indicators) and len(seg) <= 100:
-                cleaned.append(seg)
+            p = p.strip()
+            if not p: continue
+            p = p[:100]  # limit length
+            name = p.split("(")[0].strip()
+            low = name.lower()
+            if any(ind in low for ind in indicators) or any(elite in low for elite in elite_names):
+                cleaned.append(name)
         return cleaned
 
-    # Extract from ALL matching posts
+    # Apply to all matched rows
     df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
-    all_schools = [school for sublist in df2["cleaned_list"] for school in sublist]
+    all_schools = [school for sub in df2["cleaned_list"] for school in sub]
 
     if not all_schools:
         st.warning("No clean acceptances found.")
         return
 
+    # Count and display results
     counts = Counter(all_schools)
-    st.markdown("#### 🎯 Accepted Colleges Summary:")
-    for school, cnt in counts.most_common(25):
+    st.markdown("#### Accepted Colleges Summary:")
+    for school, cnt in counts.most_common(20):
         st.markdown(f"- **{school}** — {cnt} acceptance(s)")
 
-    # Matched Profiles
-    st.markdown("---\n#### 👤 Matched Profiles:")
+    if df2.empty:
+        st.warning("No matches found.")
+        return
+
+    st.markdown("---\n#### Matched Profiles:")
     for _, r in df2.iterrows():
         ec_hits = [kw for kw in ec_keys if kw in str(r['parsed_ECs']).lower()]
         st.markdown(f"""
         • [{r['url']}]({r['url']})  
           GPA: {r['GPA']:.2f} | SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}  
           Major: {r['Major']} | Residency: {r['Residency_norm']}  
-          Acceptances: {', '.join(r['cleaned_list'])}  
-          EC hits: {', '.join(ec_hits[:5])}
+          Acceptances: {r['acceptances_clean']}  
+          EC hits: {', '.join(ec_hits)}
         """)
 
     # Save email
     with open("emails_collected.txt", "a") as f:
         f.write(email + "\n")
+
 
 
 
