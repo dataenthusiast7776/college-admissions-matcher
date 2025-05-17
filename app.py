@@ -197,7 +197,7 @@ def main():
         else:
             st.info("Enter one or more college names to see matching acceptances.")
 
-    with tabs[2]:
+with tabs[2]:
     st.markdown("### 🎓 College List Wizard")
     st.info("Tell us about your preferences and priorities, and we’ll help you build a smart college list!")
 
