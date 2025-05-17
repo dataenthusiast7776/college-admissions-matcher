@@ -205,7 +205,7 @@ def college_list_wizard(df):
     # Assume df2 is your filtered DataFrame after all filters applied
 
     # Prepare matched colleges summary (counts)
-    all_schools = [school for sub in df2["cleaned_list"] for school in sub]
+    all_schools = [school for sub in df2["cleaned_list"].fillna([]) for school in sub]
     counts = Counter(all_schools)
     matched_colleges = counts.most_common(20)
 
