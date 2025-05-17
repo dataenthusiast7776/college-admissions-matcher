@@ -286,6 +286,19 @@ def college_list_wizard(df):
         c = canvas.Canvas(buffer, pagesize=letter)
         width, height = letter
 
+        logo_path = "assets/logo.png"
+        logo_width = 100  # adjust width as needed
+        logo_height = 50  # adjust height as needed
+
+        # Draw logo at top right corner
+        # x position: page width - right margin - logo width
+        # y position: page height - top margin - logo height
+        right_margin = 40
+        top_margin = 50
+
+        c.drawImage(logo_path, width - right_margin - logo_width, height - top_margin - logo_height, 
+            width=logo_width, height=logo_height, mask='auto')
+
         # Title and Timestamp
         c.setFont("Helvetica-Bold", 16)
         c.drawString(40, height - 50, "MatchMyApp - Personalized College List")
