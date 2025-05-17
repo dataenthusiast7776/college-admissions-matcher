@@ -12,7 +12,7 @@ def load_data():
     )
     return pd.read_csv(url)
 
-# === Utility: Display Results in Tab 0 & 1 ===
+# === Utility: Display Results ===
 def display_results(df):
     if df.empty:
         st.warning("No results found with current filters.")
@@ -31,7 +31,7 @@ def display_results(df):
             unsafe_allow_html=True
         )
 
-# === Utility: Filter by College Names for Tab 1 ===
+# === Utility: Filter by College Names ===
 def filter_by_colleges(df, college_input):
     colleges = [c.strip().lower() for c in college_input.split(",") if c.strip()]
     if not colleges:
@@ -42,18 +42,8 @@ def filter_by_colleges(df, college_input):
     return df[mask]
 
 # === Tab 0 Matcher ===
-def match_profiles_basic(
-    df,
-    gpa=None,
-    sat=None,
-    act=None,
-    ethnicity=None,
-    gender=None,
-    ec_query=None,
-    use_gpa=False
-):
+def match_profiles_basic(df, gpa=None, sat=None, act=None, ethnicity=None, gender=None, ec_query=None, use_gpa=False):
     filtered = df.copy()
-
     if use_gpa and gpa is not None:
         filtered = filtered[filtered["GPA"] >= gpa - 0.2]
     if sat is not None:
@@ -64,29 +54,18 @@ def match_profiles_basic(
         filtered = filtered[filtered["Ethnicity"] == ethnicity]
     if gender and gender != "No filter":
         filtered = filtered[filtered["Gender"] == gender]
-
     if ec_query:
         filtered["ec_score"] = filtered["parsed_ECs"].apply(
             lambda x: difflib.SequenceMatcher(None, ec_query.lower(), str(x).lower()).ratio()
         )
     else:
         filtered["ec_score"] = 0.5
-
     filtered = filtered.sort_values("ec_score", ascending=False)
     return filtered.head(10)
 
 # === Tab 2 Matcher ===
-def match_profiles_advanced(
-    df,
-    gpa,
-    sat=None,
-    act=None,
-    residency=None,
-    ec_keywords=None,
-    major_keywords=None
-):
+def match_profiles_advanced(df, gpa, sat=None, act=None, residency=None, ec_keywords=None, major_keywords=None):
     filtered = df.copy()
-
     filtered = filtered[filtered["GPA"] >= gpa - 0.2]
     if sat is not None:
         filtered = filtered[filtered["SAT_Score"] >= sat - 40]
@@ -94,21 +73,18 @@ def match_profiles_advanced(
         filtered = filtered[filtered["ACT_Score"] >= act - 2]
     if residency:
         filtered = filtered[filtered["Residency"].str.lower() == residency.lower()]
-
     if ec_keywords:
         filtered["ec_score"] = filtered["parsed_ECs"].apply(
             lambda x: difflib.SequenceMatcher(None, ec_keywords.lower(), str(x).lower()).ratio()
         )
     else:
         filtered["ec_score"] = 0.5
-
     if major_keywords:
         filtered["major_score"] = filtered["Major"].apply(
             lambda x: difflib.SequenceMatcher(None, major_keywords.lower(), str(x).lower()).ratio()
         )
     else:
         filtered["major_score"] = 0.5
-
     filtered["match_score"] = (filtered["ec_score"] + filtered["major_score"]) / 2
     filtered = filtered.sort_values("match_score", ascending=False)
     return filtered.head(10)
@@ -147,46 +123,33 @@ def main():
     # --- Tab 0: Profile Filter ---
     with tabs[0]:
         st.markdown("#### Enter your profile (leave filters blank to skip):")
-        use_gpa = st.checkbox("Filter by GPA", value=True)
+        use_gpa = st.checkbox("Filter by GPA", value=True, key="use_gpa_0")
         if use_gpa:
-            gpa_s = st.slider("GPA (max 4.0)", 0.0, 4.0, 4.0, 0.01)
-            gpa_m = st.number_input(
-                "Or enter GPA manually", 0.0, 4.0, gpa_s, 0.01
-            )
+            gpa_s = st.slider("GPA (max 4.0)", 0.0, 4.0, 4.0, 0.01, key="gpa_s_0")
+            gpa_m = st.number_input("Or enter GPA manually", 0.0, 4.0, gpa_s, 0.01, key="gpa_m_0")
             user_gpa = gpa_m if gpa_m != gpa_s else gpa_s
         else:
             user_gpa = None
 
-        score_choice = st.selectbox(
-            "Score filter", ["No filter", "SAT", "ACT"]
-        )
+        score_choice = st.selectbox("Score filter", ["No filter", "SAT", "ACT"], key="score_choice_0")
         user_sat = user_act = None
         if score_choice == "SAT":
-            user_sat = st.number_input("SAT Score", 400, 1600, 1580, 10)
+            user_sat = st.number_input("SAT Score", 400, 1600, 1580, 10, key="sat_score_0")
         elif score_choice == "ACT":
-            user_act = st.number_input("ACT Score", 1, 36, 35, 1)
+            user_act = st.number_input("ACT Score", 1, 36, 35, 1, key="act_score_0")
 
         user_eth = st.selectbox(
             "Ethnicity",
-            [
-                "No filter",
-                "Asian",
-                "White",
-                "Black",
-                "Hispanic",
-                "Native American",
-                "Middle Eastern",
-                "Other",
-            ],
+            ["No filter", "Asian", "White", "Black", "Hispanic", "Native American", "Middle Eastern", "Other"],
+            key="eth_0"
         )
-        user_gen = st.selectbox(
-            "Gender", ["No filter", "Male", "Female"]
-        )
+        user_gen = st.selectbox("Gender", ["No filter", "Male", "Female"], key="gen_0")
 
         ec_query = st.text_area(
             "Describe your extracurriculars:",
-            placeholder="e.g., robotics club, soccer, tutoring",
+            placeholder="e.g., robotics club, varsity soccer, volunteer tutoring",
             height=80,
+            key="ec_0"
         )
 
         res = match_profiles_basic(
@@ -206,7 +169,7 @@ def main():
         st.markdown(
             "#### Filter profiles accepted to the following college(s) (comma separated):"
         )
-        college_input = st.text_input("Enter college name(s)")
+        college_input = st.text_input("Enter college name(s)", key="college_filter_1")
         if college_input.strip():
             res = filter_by_colleges(df, college_input)
             display_results(res)
@@ -219,34 +182,32 @@ def main():
         st.markdown("Find schools where students like you got in!")
 
         gpa = st.slider(
-            "Your GPA (unweighted, max 4.0)", 0.0, 4.0, 4.0, 0.01
+            "Your GPA (unweighted, max 4.0)", 0.0, 4.0, 4.0, 0.01, key="gpa_2"
         )
-        score_type = st.selectbox(
-            "Test Type", ["None", "SAT", "ACT"]
-        )
+        score_type = st.selectbox("Test Type", ["None", "SAT", "ACT"], key="score_type_2")
         sat_score = act_score = None
         if score_type == "SAT":
-            sat_score = st.number_input("SAT Score", 400, 1600, 1500, 10)
+            sat_score = st.number_input("SAT Score", 400, 1600, 1500, 10, key="sat_2")
         elif score_type == "ACT":
-            act_score = st.number_input("ACT Score", 1, 36, 34, 1)
+            act_score = st.number_input("ACT Score", 1, 36, 34, 1, key="act_2")
 
         residency = st.selectbox(
-            "Are you applying as a...", ["Domestic", "International"]
+            "Are you applying as a...", ["Domestic", "International"], key="residency_2"
         )
         ec_input = st.text_area(
             "Extracurriculars (keywords):",
             placeholder="e.g., math club, research",
             height=60,
+            key="ec_2"
         )
         major_input = st.text_input(
-            "Intended Major (optional):", placeholder="e.g., Computer Science"
+            "Intended Major (optional):", placeholder="e.g., Computer Science", key="major_2"
         )
 
         email = st.text_input(
-            "Your Email (to receive a PDF summary):",
-            placeholder="you@example.com",
+            "Your Email (to receive a PDF summary):", placeholder="you@example.com", key="email_2"
         )
-        match_button = st.button("🎉 Match Me!")
+        match_button = st.button("🎉 Match Me!", key="match_btn_2")
 
         if match_button:
             if not email or "@" not in email:
@@ -266,7 +227,6 @@ def main():
                 else:
                     st.success("🎓 Top Matches Based on Your Profile:")
                     display_results(matches)
-                    # save email
                     with open("emails_collected.txt", "a") as f:
                         f.write(email.strip() + "\n")
 
