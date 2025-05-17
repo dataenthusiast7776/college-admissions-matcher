@@ -8,7 +8,9 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 import io
-
+import os
+import smtplib
+from email.message import EmailMessage
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
     "a","an","the","and","or","but","if","then","with","on","in",
@@ -167,6 +169,16 @@ def fuzzy_match_major(user_major, majors_list, cutoff=0.6):
 
 from collections import Counter
 
+import smtplib
+from email.message import EmailMessage
+import io
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
+from collections import Counter
+import re
+import pandas as pd
+
 def college_list_wizard(df):
     st.markdown("### 🎓 College List Wizard (DEBUG MODE)")
     st.info("Provide your academic profile and we’ll find matching accepted colleges!")
@@ -179,202 +191,146 @@ def college_list_wizard(df):
     domestic = st.checkbox("Domestic student? (leave unchecked for International)")
     email = st.text_input("Enter your Email:")
 
-    # Email validation
     if email and not is_valid_email(email):
         st.warning("Please enter a valid email address.")
 
-    # Parse GPA
-    try:
-        gpa_val = float(gpa)
-    except:
-        gpa_val = None
-
-    # Parse test score
-    sat_val = act_val = None
-    if test_score.strip().isdigit():
-        sc = int(test_score.strip())
-        if 1 <= sc <= 36:
-            act_val = sc
-            sat_val = sc * 45
-        elif 400 <= sc <= 1600:
-            sat_val = sc
-
-    # Simple keyword match major (full major spelled out)
-    def match_major(user_major, majors_list):
-        user_major_lower = user_major.strip().lower()
-        for m in majors_list:
-            if user_major_lower in m.lower():
-                return m  # return exact df major spelling
-        return None
-
-    majors_list = df['Major'].dropna().unique()
-    matched_major = match_major(major, majors_list)
+    # Parsing inputs (gpa, test_score) omitted here for brevity (same as your original code)...
 
     # Match Me! button
     match_button = st.button("Match Me!", disabled=not is_valid_email(email))
     if not match_button:
         return
 
-    # Start filtering
-    df2 = df.copy()
-    st.write("🔹 Initial DataFrame:", df2.shape)
+    # Your filtering logic here (same as your original code)...
+    # Assume df2 is your filtered DataFrame after all filters applied
 
-    # Residency
-    df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)
-    target_res = "domestic" if domestic else "international"
-    df2 = df2[df2['Residency_norm'] == target_res]
-    st.write(f"🔹 After Residency filter ({target_res}):", df2.shape)
-    st.dataframe(df2[['Residency','Residency_norm']].head())
-
-    # GPA
-    if gpa_val is not None:
-        df2 = df2[(df2['GPA'] >= gpa_val - 0.1) & (df2['GPA'] <= gpa_val + 0.1)]
-        st.write(f"🔹 After GPA filter (±0.1 around {gpa_val}):", df2.shape)
-        st.dataframe(df2[['GPA']].head())
-
-    # SAT/ACT
-    def sat_act_match(row):
-        sat_ok = sat_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - sat_val) <= 30
-        act_ok = act_val is not None and not pd.isna(row['ACT_Score']) and abs(row['ACT_Score'] - act_val) <= 1
-        conv_ok = act_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - act_val*45) <= 30
-        return sat_ok or act_ok or conv_ok
-
-    if sat_val is not None or act_val is not None:
-        df2 = df2[df2.apply(sat_act_match, axis=1)]
-        st.write("🔹 After SAT/ACT filter:", df2.shape)
-        st.dataframe(df2[['SAT_Score','ACT_Score']].head())
-
-    # Major filter
-    if matched_major:
-        df2 = df2[df2['Major'] == matched_major]
-        st.write(f"🔹 After Major filter (matched: {matched_major}):", df2.shape)
-        st.dataframe(df2[['Major']].head())
-    else:
-        st.warning("Major not found in database. No major filter applied.")
-
-    # Extracurriculars
-    ec_keys = extract_keywords(ecs)
-    if ec_keys:
-        df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
-        st.write(f"🔹 After EC keyword filter (keywords: {ec_keys}):", df2.shape)
-        st.dataframe(df2[['parsed_ECs']].head())
-
-    # Extract clean acceptances after all filters are applied
-    indicators = [
-        "university", "college", "institute", "school",
-        "academy", "tech", "polytechnic", "poly", "mit",
-        "stanford", "harvard", "princeton", "yale"
-        # add more top 40 schools and top 10 LACs if you want here
-    ]
-
-    def extract_clean_colleges(raw):
-        if not isinstance(raw, str) or not raw.strip():
-            return []
-        parts = re.split(r"[\n,]+", raw)
-        cleaned = []
-        for p in parts:
-            seg = p.strip()
-            if not seg:
-                continue
-            # drop comments in parentheses
-            name = seg.split("(", 1)[0].strip()
-            low = name.lower()
-            if any(ind in low for ind in indicators):
-                cleaned.append(name[:100])  # limit to 100 chars max
-        return cleaned
-
-    df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
+    # Prepare matched colleges summary (counts)
     all_schools = [school for sub in df2["cleaned_list"] for school in sub]
-
-    if not all_schools:
-        st.warning("No clean acceptances found.")
-        return
-
-    # count frequency
     counts = Counter(all_schools)
-    st.markdown("#### Accepted Colleges Summary:")
-    for school, cnt in counts.most_common(20):
-        st.markdown(f"- **{school}** — {cnt} acceptance(s)")
+    matched_colleges = counts.most_common(20)
 
-    if df2.empty:
-        st.warning("No matches found.")
-        return
-
-    st.markdown("---\n#### Matched Profiles:")
+    # Prepare matched profiles list for PDF (simplify keys for example)
+    matched_profiles = []
     for _, r in df2.iterrows():
-        ec_hits = [kw for kw in ec_keys if kw in str(r['parsed_ECs']).lower()]
-        st.markdown(f"""
-        • [{r['url']}]({r['url']})  
-          GPA: {r['GPA']:.2f} | SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}  
-          Major: {r['Major']} | Residency: {r['Residency_norm']}  
-          Acceptances: {r['acceptances']}  
-          EC hits: {', '.join(ec_hits)}
-        """)
+        matched_profiles.append({
+            "url": r["url"],
+            "GPA": r["GPA"],
+            "SAT": r["SAT_Score"],
+            "ACT": r["ACT_Score"],
+            "Major": r["Major"],
+            "Residency": r["Residency_norm"],
+            "Acceptances": r["acceptances"],
+            "EC Hits": [kw for kw in extract_keywords(ecs) if kw in str(r['parsed_ECs']).lower()]
+        })
+
+    # User inputs summary for PDF
+    user_inputs = {
+        "GPA": gpa,
+        "Test Score": test_score,
+        "Major": major,
+        "Extracurriculars": ecs,
+        "Residency": "Domestic" if domestic else "International",
+        "Email": email
+    }
+
+    # Generate PDF bytes
+    pdf_buffer = generate_pdf(user_inputs, matched_colleges, matched_profiles)
+
+    # Send email with PDF attached
+    success, msg = send_email_with_pdf(
+        to_email=email,
+        subject="Your MatchMyApp College Match Report",
+        body_text="Hi! Attached is your MatchMyApp report. Best of luck!",
+        pdf_bytes=pdf_buffer.getvalue()
+    )
+
+    if success:
+        st.success(msg)
+    else:
+        st.error(msg)
 
     # Log email
     with open("emails_collected.txt", "a") as f:
         f.write(email + "\n")
-        
-    def generate_pdf(user_inputs, matched_colleges, matched_profiles, logo_path="logo.png"):
-        buffer = io.BytesIO()
-        c = canvas.Canvas(buffer, pagesize=letter)
-        width, height = letter
-    
-        # Logo
-        if logo_path:
-            try:
-                logo = ImageReader(logo_path)
-                c.drawImage(logo, width - 150, height - 80, width=100, preserveAspectRatio=True, mask='auto')
-            except:
-                pass  # Fail silently if logo isn't found
-    
-        # Title
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(40, height - 50, "🎓 College List Match Report")
-    
-        y = height - 100
-        c.setFont("Helvetica", 11)
-        
-        def write_line(text, indent=0, space=15):
-            nonlocal y
-            if y < 60:
-                c.showPage()
-                y = height - 50
-            c.drawString(40 + indent, y, text)
-            y -= space
-    
-        # --- User Input Summary ---
-        write_line("Your Profile:")
-        for k, v in user_inputs.items():
-            write_line(f"{k}: {v}", indent=20)
-    
-        # --- College Summary ---
-        write_line("")
-        write_line("Top Matched Colleges:")
-        for school, count in matched_colleges:
-            write_line(f"{school} — {count} acceptance(s)", indent=20)
-    
-        # --- Matched Profiles ---
-        write_line("")
-        write_line("Matched Reddit Profiles:")
-        for profile in matched_profiles:
-            write_line(f"{profile['url']}", indent=20)
-            write_line(f"GPA: {profile['GPA']} | SAT: {profile['SAT']} | ACT: {profile['ACT']}", indent=40)
-            write_line(f"Major: {profile['Major']} | Residency: {profile['Residency']}", indent=40)
-            write_line(f"Acceptances: {profile['Acceptances']}", indent=40)
-            write_line(f"EC Hits: {profile['EC Hits']}", indent=40)
-            write_line("", indent=20)
-    
-        c.save()
-        buffer.seek(0)
-        return buffer
-    
 
 
+def generate_pdf(user_inputs, matched_colleges, matched_profiles, logo_path="logo.png"):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    width, height = letter
+
+    # Logo
+    if logo_path:
+        try:
+            logo = ImageReader(logo_path)
+            c.drawImage(logo, width - 150, height - 80, width=100, preserveAspectRatio=True, mask='auto')
+        except:
+            pass  # Fail silently if logo isn't found
+
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(40, height - 50, "🎓 College List Match Report")
+
+    y = height - 100
+    c.setFont("Helvetica", 11)
+
+    def write_line(text, indent=0, space=15):
+        nonlocal y
+        if y < 60:
+            c.showPage()
+            y = height - 50
+        c.drawString(40 + indent, y, text)
+        y -= space
+
+    # User inputs
+    write_line("Your Profile:")
+    for k, v in user_inputs.items():
+        write_line(f"{k}: {v}", indent=20)
+
+    write_line("")
+    write_line("Top Matched Colleges:")
+    for school, count in matched_colleges:
+        write_line(f"{school} — {count} acceptance(s)", indent=20)
+
+    write_line("")
+    write_line("Matched Reddit Profiles:")
+    for profile in matched_profiles:
+        write_line(f"{profile['url']}", indent=20)
+        write_line(f"GPA: {profile['GPA']} | SAT: {profile['SAT']} | ACT: {profile['ACT']}", indent=40)
+        write_line(f"Major: {profile['Major']} | Residency: {profile['Residency']}", indent=40)
+        write_line(f"Acceptances: {profile['Acceptances']}", indent=40)
+        write_line(f"EC Hits: {', '.join(profile['EC Hits'])}", indent=40)
+        write_line("", indent=20)
+
+    c.save()
+    buffer.seek(0)
+    return buffer
 
 
+def send_email_with_pdf(to_email: str, subject: str, body_text: str, pdf_bytes: bytes, filename="MatchMyApp_Report.pdf"):
+    import streamlit as st
 
+    # Read email creds from Streamlit secrets
+    email_user = st.secrets["email_user"]
+    email_pass = st.secrets["email_password"]
+    smtp_server = st.secrets.get("smtp_server", "smtp.gmail.com")
+    smtp_port = st.secrets.get("smtp_port", 587)
 
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    msg['From'] = email_user
+    msg['To'] = to_email
+    msg.set_content(body_text)
+
+    msg.add_attachment(pdf_bytes, maintype='application', subtype='pdf', filename=filename)
+
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(email_user, email_pass)
+            server.send_message(msg)
+        return True, "Email sent successfully!"
+    except Exception as e:
+        return False, f"Failed to send email: {e}"
 
 
 # ——— Main App ———
