@@ -460,6 +460,7 @@ def main():
       </div>
       <div style="flex-shrink:0;">
         <img src="https://raw.githubusercontent.com/vikram-dev1125/college-admissions-matcher/refs/heads/main/assets/logo.png" style="height:60px;">
+        style="width:100px; height:100px;" />
       </div>
     </div>
     """, unsafe_allow_html=True)
