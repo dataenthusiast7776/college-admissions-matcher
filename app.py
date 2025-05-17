@@ -2,8 +2,6 @@ import streamlit as st
 import pandas as pd
 import re
 import string
-from difflib import get_close_matches
-from collections import Counter
 
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
@@ -145,28 +143,12 @@ def display_results(res):
 def is_valid_email(email):
     return re.match(r"[^@]+@[^@]+\.[^@]+", email)
 
-def normalize_residency(residency):
-    if pd.isna(residency):
-        return "other"
-    r = residency.lower()
-    if "domestic" in r:
-        return "domestic"
-    if "international" in r:
-        return "international"
-    return "other"
-
-def fuzzy_match_major(user_major, majors_list, cutoff=0.6):
-    if not user_major.strip():
-        return None
-    matches = get_close_matches(user_major.lower(), [m.lower() for m in majors_list], n=1, cutoff=cutoff)
-    return matches[0] if matches else None
-
-def college_list_wizard(df):
+def college_list_wizard():
     st.markdown("### 🎓 College List Wizard")
-    st.info("Provide your academic profile and we’ll find matching accepted colleges!")
+    st.info("Provide your academic profile; we’ll email you a polished PDF summary!")
 
-    gpa = st.text_input("Enter your GPA (0.0–4.0):")
-    test_score = st.text_input("Enter SAT (400–1600) or ACT (1–36):")
+    gpa = st.text_input("Enter your GPA (e.g. 3.8):")
+    test_score = st.text_input("Enter SAT/ACT or other test scores (optional):")
     major = st.text_input("Intended Major:")
     ecs = st.text_area("Describe your Extracurriculars:")
     domestic = st.checkbox("Domestic student? (leave unchecked for International)")
@@ -175,106 +157,94 @@ def college_list_wizard(df):
     if email and not is_valid_email(email):
         st.warning("Please enter a valid email address.")
 
-    # parse inputs
-    try:
-        gpa_val = float(gpa)
-    except:
-        gpa_val = None
-
-    sat_val = act_val = None
-    if test_score.strip().isdigit():
-        sc = int(test_score.strip())
-        if 1 <= sc <= 36:
-            act_val = sc
-            sat_val = sc * 45
-        elif 400 <= sc <= 1600:
-            sat_val = sc
-
-    majors_list = df['Major'].dropna().unique()
-    matched_major = fuzzy_match_major(major, majors_list)
-
+    # disable button until email is valid
     match_button = st.button("Match Me!", disabled=not is_valid_email(email))
-    if not match_button:
-        return
 
-    # begin filtering
-    df2 = df.copy()
-    df2['Residency_norm'] = df2['Residency'].apply(normalize_residency)
-    target_res = "domestic" if domestic else "international"
-    df2 = df2[df2['Residency_norm'] == target_res]
-
-    if gpa_val is not None:
-        df2 = df2[(df2['GPA'] >= gpa_val - 0.1) & (df2['GPA'] <= gpa_val + 0.1)]
-
-    def sat_act_match(row):
-        sat_ok = sat_val is not None and not pd.isna(row['SAT_Score']) and abs(row['SAT_Score'] - sat_val) <= 30
-        act_ok = act_val is not None and not pd.isna(row['ACT_Score']) and abs(row['ACT_Score'] - act_val) <= 1
-        conv_ok = False
-        if act_val is not None and not pd.isna(row['SAT_Score']):
-            conv_ok = abs(row['SAT_Score'] - act_val*45) <= 30
-        return sat_ok or act_ok or conv_ok
-
-    df2 = df2[df2.apply(sat_act_match, axis=1)]
-
-    if matched_major:
-        df2 = df2[df2['Major'].str.lower() == matched_major]
-
-    ec_keys = extract_keywords(ecs)
-    if ec_keys:
-        df2 = df2[df2['parsed_ECs'].apply(lambda txt: any(kw in str(txt).lower() for kw in ec_keys))]
-
-    # clean and aggregate acceptances
-    df2['acceptances_clean'] = df2['acceptances'].apply(lambda raw: ", ".join([p.strip() for p in re.split(r"[\n,]+", raw) if p.strip()]))
-    df2 = df2[df2['acceptances_clean'] != ""]
-    if df2.empty:
-        st.warning("No matches found.")
-        return
-
-    st.success(f"Found {len(df2)} matching profiles!")
-
-    counts = Counter(", ".join(df2['acceptances_clean']).lower().split(", "))
-    st.markdown("#### Accepted Colleges Summary:")
-    for school, cnt in counts.most_common(20):
-        st.markdown(f"- **{school.title()}** — {cnt} acceptance(s)")
-
-    st.markdown("---\n#### Matched Profiles:")
-    for _, r in df2.iterrows():
-        ec_hits = [kw for kw in ec_keys if kw in str(r['parsed_ECs']).lower()]
+    if match_button:
+        st.success("Thank you! We'll send your PDF summary shortly.")
         st.markdown(f"""
-        • [{r['url']}]({r['url']})  
-          GPA: {r['GPA']:.2f} | SAT: {r['SAT_Score']} | ACT: {r['ACT_Score']}  
-          Major: {r['Major']} | Residency: {r['Residency_norm']}  
-          Acceptances: {r['acceptances_clean']}  
-          EC hits: {', '.join(ec_hits)}
+        - **GPA:** {gpa or 'N/A'}  
+        - **Test Scores:** {test_score or 'N/A'}  
+        - **Major:** {major or 'N/A'}  
+        - **Extracurriculars:** {ecs or 'N/A'}  
+        - **Residency:** {"Domestic" if domestic else "International"}  
+        - **Email:** {email}
         """)
-
-    # log email
-    with open("emails_collected.txt", "a") as f:
-        f.write(email + "\n")
+        # here you could generate PDF & send email
+        with open("emails_collected.txt", "a") as f:
+            f.write(email + "\n")
 
 # ——— Main App ———
 def main():
     st.set_page_config(page_title="MatchMyApp", layout="centered")
     st.markdown("""
-    <div style='text-align:center;'>
-      <h1 style='color:#6A0DAD; font-size:3em;'>MatchMyApp</h1>
-      <p style='color:#DAA520; font-size:1.2em;'>Find your college application twin!</p>
+    <div style='text-align:center; margin-bottom:1.5rem;'>
+      <h1 style='color:#6A0DAD; font-size:3em; margin-bottom:0;'>MatchMyApp</h1>
+      <p style='color:#DAA520; font-size:1.3em; font-weight:bold;'>
+        Find your college application twin!
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style='font-size:1.05rem; color:white; margin-bottom:2.5rem; line-height:1.7; text-align:left;'>
+      Trained on real profiles from <i>r/collegeresults</i>.  
+      More features coming: essay review, extracurricular advice, & data insights!
     </div>
     """, unsafe_allow_html=True)
 
     df = load_data()
     tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
 
+    # — Tab 0: Profile Filter —
     with tabs[0]:
-        # … existing Tab 0 code unchanged …
-        pass
+        st.markdown("#### Enter your profile (leave filters blank to skip):")
+        use_gpa = st.checkbox("Filter by GPA", value=True)
+        if use_gpa:
+            gpa_s = st.slider("GPA (max 4.0)", 0.0, 4.0, 4.0, 0.01)
+            gpa_m = st.number_input("Or enter GPA manually", 0.0, 4.0, gpa_s, 0.01)
+            user_gpa = gpa_m if gpa_m != gpa_s else gpa_s
+        else:
+            user_gpa = None
 
+        score_choice = st.selectbox("Score filter", ["No filter","SAT","ACT"])
+        user_sat = user_act = None
+        if score_choice=="SAT":
+            user_sat = st.number_input("SAT Score",400,1600,1580,10)
+        elif score_choice=="ACT":
+            user_act = st.number_input("ACT Score",1,36,35,1)
+
+        user_eth = st.selectbox(
+            "Ethnicity",
+            ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"],
+        )
+        user_gen = st.selectbox("Gender", ["No filter","Male","Female"])
+        ec_query = st.text_area(
+            "Describe your extracurriculars:",
+            placeholder="e.g., robotics club, varsity soccer, volunteer tutoring",
+            height=80,
+        )
+
+        res = match_profiles(
+            df, user_gpa, user_sat, user_act,
+            user_eth, user_gen, ec_query,
+            use_gpa=use_gpa
+        )
+        display_results(res)
+
+    # — Tab 1: Filter by College Acceptances —
     with tabs[1]:
-        # … existing Tab 1 code unchanged …
-        pass
+        st.markdown("#### Filter profiles accepted to the following college(s):")
+        college_input = st.text_input("Enter college name(s), comma‑separated:")
+        if college_input.strip():
+            res = filter_by_colleges(df, college_input)
+            display_results(res)
+        else:
+            st.info("Enter one or more college names to see matching acceptances.")
 
+    # — Tab 2: College List Wizard (Independent) —
     with tabs[2]:
-        college_list_wizard(df)
+        college_list_wizard()
 
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
