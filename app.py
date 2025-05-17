@@ -297,7 +297,9 @@ def college_list_wizard(df):
         return
 
     # Aggregate and display results
-    counts = Counter(", ".join(df2['acceptances']).lower().split(", "))
+    counts = Counter(
+    df2['acceptances'].explode().dropna().str.lower()
+)
     st.markdown("#### Accepted Colleges Summary:")
     for school, cnt in counts.most_common(20):
         st.markdown(f"- **{school.title()}** — {cnt} acceptance(s)")
