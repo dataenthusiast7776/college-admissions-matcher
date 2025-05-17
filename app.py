@@ -3,6 +3,8 @@ import pandas as pd
 import re
 import string
 import difflib
+
+st.cache_data.clear()
 st.set_page_config(page_title="MatchMyApp", layout="wide")
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
