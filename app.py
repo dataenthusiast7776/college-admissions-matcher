@@ -264,19 +264,20 @@ def college_list_wizard(df):
     ]
 
     def extract_clean_colleges(raw):
-        parts = re.split(r"[\n,]+", raw)
-        cleaned = []
-        for p in parts:
-            seg = p.strip()
-            if not seg:
-                continue
-            # drop comments in parentheses
-            name = seg.split("(", 1)[0].strip()
-            low = name.lower()
-            # keep only if it has a school indicator
-            if any(ind in low for ind in indicators):
-                cleaned.append(name[:100])  # limit to 100 chars max
-        return cleaned
+    if not isinstance(raw, str) or not raw.strip():
+        return []
+    parts = re.split(r"[\n,]+", raw)
+    cleaned = []
+    for p in parts:
+        seg = p.strip()
+        if not seg:
+            continue
+        # drop comments in parentheses
+        name = seg.split("(", 1)[0].strip()
+        low = name.lower()
+        if any(ind in low for ind in indicators):
+            cleaned.append(name[:100])  # limit to 100 chars max
+    return cleaned
 
     df2["cleaned_list"] = df2["acceptances"].apply(extract_clean_colleges)
     all_schools = [school for sub in df2["cleaned_list"] for school in sub]
