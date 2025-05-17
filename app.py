@@ -288,7 +288,7 @@ def college_list_wizard(df):
 
         logo_path = "assets/logo.png"
         logo_width = 100  # adjust width as needed
-        logo_height = 50  # adjust height as needed
+        logo_height = 100  # adjust height as needed
 
         # Draw logo at top right corner
         # x position: page width - right margin - logo width
