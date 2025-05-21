@@ -476,7 +476,7 @@ def main():
         </div>
     
         <!-- DataDorm Button Section -->
-        <div style="text-align: center; margin-top: 30px;">
+        <div style="text-align: center; margin-top: 20px;">
           <a href="https://datadorm.streamlit.app" target="_blank" style="
               background-color: #D32F2F;
               color: white;
@@ -489,9 +489,9 @@ def main():
               box-shadow: 0 4px 8px rgba(0,0,0,0.2);
               transition: background-color 0.3s ease;
           " onmouseover="this.style.backgroundColor='#B71C1C';" onmouseout="this.style.backgroundColor='#D32F2F';">
-            DataDorm
+            🏫 DataDorm
           </a>
-          <p style="margin-top: 12px; font-size: 1.1em; color: #FFFFFF;">
+          <p style="margin-top: 12px; font-size: 1.1em; color: #add8e6;">
             Check out our college admissions data search engine, sourced from official Common Data Sets!
           </p>
         </div>
