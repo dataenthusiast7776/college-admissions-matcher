@@ -476,7 +476,7 @@ def main():
     """, unsafe_allow_html=True)
 
 
-    df = load_data()
+df = load_data()
     st.markdown("""
     <style>
     /* For the tab labels */
