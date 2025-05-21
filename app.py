@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import re
@@ -443,7 +444,7 @@ def college_list_wizard(df):
                 smtp.login(st.secrets["EMAIL_ADDRESS"], st.secrets["EMAIL_APP_PASSWORD"])
                 smtp.send_message(msg)
 
-            st.success("✅ PDF sent to your email!")
+            st.success("✅ PDF sent to your email! If it’s playing hide and seek, check your Spam folder just in case. ")
         except Exception as e:
             st.error(f"❌ Failed to send email: {e}")
 
@@ -475,6 +476,38 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown(
+    """
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="https://datadorm.streamlit.app" target="_blank" style="
+            display: inline-block;
+            font-size: 20px;
+            padding: 18px 36px;
+            background-color: #e53935;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease-in-out;
+        ">
+            🏫 Explore DataDorm
+        </a>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <p style='text-align: center; color: white; font-size: 15px; margin-top: 20px;'>
+        Check out our college admissions data search engine, sourced from official Common Data Sets!
+    </p>
+    """,
+    unsafe_allow_html=True
+)
+
 
     df = load_data()
     st.markdown("""
@@ -485,7 +518,7 @@ def main():
         font-weight: 700 !important;
     }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
     
     tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
 
@@ -508,16 +541,7 @@ def main():
 
         user_eth = st.selectbox(
             "Ethnicity",
-            [
-                "No filter",
-                "Asian",
-                "White",
-                "Black",
-                "Hispanic",
-                "Native American",
-                "Middle Eastern",
-                "Other"
-            ],
+            ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"],
         )
         user_gen = st.selectbox("Gender", ["No filter","Male","Female"])
         ec_query = st.text_area(
