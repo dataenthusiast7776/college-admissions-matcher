@@ -475,6 +475,38 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
+    st.markdown(
+    """
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="https://datadorm.streamlit.app" target="_blank" style="
+            display: inline-block;
+            font-size: 20px;
+            padding: 18px 36px;
+            background-color: #e53935;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease-in-out;
+        ">
+            🏫 Explore DataDorm
+        </a>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    """
+    <p style='text-align: center; color: white; font-size: 15px; margin-top: 20px;'>
+        Check out our college admissions data search engine, sourced from official Common Data Sets!
+    </p>
+    """,
+    unsafe_allow_html=True
+)
+
 
     df = load_data()
     st.markdown("""
