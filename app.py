@@ -506,10 +506,7 @@ def main():
         elif score_choice=="ACT":
             user_act = st.number_input("ACT Score",1,36,35,1)
 
-        user_eth = st.selectbox(
-            "Ethnicity",
-            ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"],
-        )
+        user_eth = st.selectbox("Ethnicity", ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"])
         user_gen = st.selectbox("Gender", ["No filter","Male","Female"])
         ec_query = st.text_area(
             "Describe your extracurriculars:",
