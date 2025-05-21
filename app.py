@@ -476,7 +476,7 @@ def main():
     """, unsafe_allow_html=True)
 
 
-df = load_data()
+    df = load_data()
     st.markdown("""
     <style>
     /* For the tab labels */
@@ -508,7 +508,16 @@ df = load_data()
 
         user_eth = st.selectbox(
             "Ethnicity",
-            ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"],
+            [
+                "No filter",
+                "Asian",
+                "White",
+                "Black",
+                "Hispanic",
+                "Native American",
+                "Middle Eastern",
+                "Other"
+            ],
         )
         user_gen = st.selectbox("Gender", ["No filter","Male","Female"])
         ec_query = st.text_area(
