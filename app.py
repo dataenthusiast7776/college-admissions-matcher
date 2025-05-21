@@ -443,7 +443,7 @@ def college_list_wizard(df):
                 smtp.login(st.secrets["EMAIL_ADDRESS"], st.secrets["EMAIL_APP_PASSWORD"])
                 smtp.send_message(msg)
 
-            st.success("✅ PDF sent to your email! If it’s playing hide and seek, check your Spam folder just in case. ")
+            st.success("✅ PDF sent to your email!")
         except Exception as e:
             st.error(f"❌ Failed to send email: {e}")
 
@@ -506,7 +506,10 @@ def main():
         elif score_choice=="ACT":
             user_act = st.number_input("ACT Score",1,36,35,1)
 
-        user_eth = st.selectbox("Ethnicity", ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"])
+        user_eth = st.selectbox(
+            "Ethnicity",
+            ["No filter","Asian","White","Black","Hispanic","Native American","Middle Eastern","Other"],
+        )
         user_gen = st.selectbox("Gender", ["No filter","Male","Female"])
         ec_query = st.text_area(
             "Describe your extracurriculars:",
@@ -535,4 +538,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
