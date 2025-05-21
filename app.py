@@ -485,7 +485,7 @@ def main():
         font-weight: 700 !important;
     }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     
     tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
 
