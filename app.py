@@ -475,6 +475,7 @@ def main():
     </div>
     """, unsafe_allow_html=True)
 
+
     df = load_data()
     st.markdown("""
     <style>
@@ -537,3 +538,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
