@@ -456,24 +456,47 @@ def main():
       We are taking your feedback! Click <a href="https://docs.google.com/forms/d/e/1FAIpQLSdgaCUa7S2KFfs6hUsFyDtttUZYiT46uTWtXEhhR9in8fEy6g/viewform?usp=header" target="_blank" style="color: #6A0DAD; text-decoration: underline;">here</a> to fill out a quick survey!
     </div>
     """, unsafe_allow_html=True)
+
     st.markdown("""
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <div style="flex-grow:1; text-align:center;">
-        <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
-        <p style='color:#DAA520; font-size:1.2em; margin:0; line-height:1; margin-top:-8px; transform: translateX(-10px);'>
-          Find your college application twin!
-        </p>
-      </div>
-    </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="flex-grow:1; text-align:center;">
+            <h1 style='color:#6A0DAD; font-size:3em; margin:0;'>MatchMyApp</h1>
+            <p style='color:#DAA520; font-size:1.2em; margin:0; line-height:1; margin-top:-8px; transform: translateX(-10px);'>
+              Find your college application twin!
+            </p>
+          </div>
+        </div>
+    
+        <div style="margin-top: 30px; max-width: 700px; margin-left: auto; margin-right: auto;">
+          <p>I got bored one day, so I wrote a script to mine data off of the r/collegeresults subreddit. Well, one thing turned into another, and I realized I had a treasure trove of data to be put to use. A few days of caffeine-induced coding later, voila! MatchMyApp was born.</p>
+    
+          <p>Whether you're a junior preparing for college applications, a data enthusiast, or a parent looking to see how far your child could go, MatchMyApp has free, data-driven tools for you! Input your stats and see the results of similar past applicants in seconds, or build a targeted college list based on past acceptance data! Or, if you're a data nerd like me, head over to the data corner for an endless array of interesting graphs made from the master dataset.</p>
+    
+          <p>MatchMyApp is a work-in-progress, and I am currently working on adding LLM-supported features such as essay revision and guidance, personalized advice for extracurriculars, and more, all for free!</p>
+        </div>
+    
+        <!-- DataDorm Button Section -->
+        <div style="text-align: center; margin-top: 40px;">
+          <a href="https://datadorm.streamlit.app" target="_blank" style="
+              background-color: #D32F2F;
+              color: white;
+              padding: 20px 40px;
+              font-size: 2em;
+              font-weight: bold;
+              border-radius: 12px;
+              text-decoration: none;
+              display: inline-block;
+              box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+              transition: background-color 0.3s ease;
+          " onmouseover="this.style.backgroundColor='#B71C1C';" onmouseout="this.style.backgroundColor='#D32F2F';">
+            DataDorm
+          </a>
+          <p style="margin-top: 12px; font-size: 1.1em; color: #555;">
+            Check out our college admissions data search engine, sourced from official Common Data Sets!
+          </p>
+        </div>
+        """, unsafe_allow_html=True)
 
-    <div style="margin-top: 30px; max-width: 700px; margin-left: auto; margin-right: auto;">
-      <p>I got bored one day, so I wrote a script to mine data off of the r/collegeresults subreddit. Well, one thing turned into another, and I realized I had a treasure trove of data to be put to use. A few days of caffeine-induced coding later, voila! MatchMyApp was born.</p>
-
-      <p>Whether you're a junior preparing for college applications, a data enthusiast, or a parent looking to see how far your child could go, MatchMyApp has free, data-driven tools for you! Input your stats and see the results of similar past applicants in seconds, or build a targeted college list based on past acceptance data! Or, if you're a data nerd like me, head over to the data corner for an endless array of interesting graphs made from the master dataset.</p>
-
-      <p>MatchMyApp is a work-in-progress, and I am currently working on adding LLM-supported features such as essay revision and guidance, personalized advice for extracurriculars, and more, all for free!</p>
-    </div>
-    """, unsafe_allow_html=True)
 
 
     df = load_data()
