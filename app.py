@@ -119,13 +119,21 @@ def match_profiles(df, gpa, sat, act, eth, gen, ec_query, use_gpa=True):
     return d[['url','GPA','SAT_Score','ACT_Score','Ethnicity','Gender','acc_clean','EC_matches']]
 
 def filter_by_colleges(df, colleges_input):
-    cols = [c.strip().lower() for c in colleges_input.split(",") if c.strip()]
-    d = df[df['acc_clean']!=""]
-    for c in cols:
-        d = d[d['acc_clean'].str.lower().str.contains(c, na=False)]
-    return d[['url','GPA','SAT_Score','ACT_Score','Ethnicity','Gender','acc_clean','parsed_ECs']]
+    d = df[df['acc_clean'] != ""]
+    acc_col = d['acc_clean'].str.lower()
 
-@st.cache_data
+    # Check for OR logic if " or " is present (case insensitive)
+    if " or " in colleges_input.lower():
+        cols = [c.strip().lower() for c in re.split(r"\s+or\s+", colleges_input, flags=re.IGNORECASE)]
+        pattern = "|".join([re.escape(c) for c in cols])
+        mask = acc_col.str.contains(pattern, na=False)
+    else:
+        # Default to AND logic using commas
+        cols = [c.strip().lower() for c in colleges_input.split(",") if c.strip()]
+        mask = acc_col.apply(lambda s: all(c in s for c in cols))
+
+    return d[mask][['url', 'GPA', 'SAT_Score', 'ACT_Score', 'Ethnicity', 'Gender', 'acc_clean', 'parsed_ECs']]
+
 def load_data():
     drive_url = "https://drive.google.com/uc?export=download&id=1nZtwYcUX_KraxOTAOLg6-ZvKZnKMNpSg"
     try:
@@ -687,7 +695,7 @@ def main():
 
     with tabs[1]:
         st.markdown("#### Filter profiles accepted to the following college(s):")
-        college_input = st.text_input("Enter college name(s), comma‑separated:")
+        college_input = st.text_input("Enter college name(s), comma‑separated. Use keyword OR to get profiles that were accepted to at-least one of the chosen colleges!")
         if college_input.strip():
             res = filter_by_colleges(df, college_input)
             display_results(res)
