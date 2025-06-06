@@ -3,7 +3,8 @@ import pandas as pd
 import re
 import string
 import textwrap
-from datetime import datetime
+from datetime import datetime, timedelta
+from datetime import date, time
 from difflib import get_close_matches
 from collections import Counter
 from reportlab.lib.pagesizes import letter
@@ -13,6 +14,8 @@ import io
 import os
 import smtplib
 from email.message import EmailMessage
+from fpdf import FPDF
+from math import ceil
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
     "a","an","the","and","or","but","if","then","with","on","in",
@@ -449,6 +452,141 @@ def college_list_wizard(df):
 
 
 
+
+def generate_and_render_timeline(num_early, num_rd, num_ed2, start_date, fafsa_eligible):
+    timeline = []
+    # Normalize start_date to datetime with time 00:00 if only date provided
+    if isinstance(start_date, date) and not isinstance(start_date, datetime):
+        current_date = datetime.combine(start_date, time.min)
+    else:
+        current_date = start_date
+
+    # Helper to add tasks to timeline and increment date by 7 days
+    def add_week(tasks):
+        nonlocal current_date
+        timeline.append({"week_start": current_date, "tasks": tasks})
+        current_date += timedelta(days=7)
+
+    # Week 1: Common App basics
+    add_week([
+        "Familiarize yourself with the Common App",
+        "Fill out personal and parent information"
+    ])
+
+    # Early apps timeline
+    early_weeks = 9  # weeks until Nov 1 from late Aug start
+    if num_early > 0:
+        essays_per_week = ceil(num_early / (early_weeks - 1))
+        # Week 2: invite recommenders + start essays
+        add_week([
+            f"Work on approximately {essays_per_week} Early Action/Decision essays",
+            "Invite recommenders"
+        ])
+        # Weeks 3 to 8: essay work
+        for _ in range(early_weeks - 3):
+            add_week([f"Work on approximately {essays_per_week} Early Action/Decision essays"])
+        # Week 9: finalize early apps
+        add_week(["Finalize and submit Early Action/Decision applications"])
+    else:
+        # If no early apps, skip these weeks
+        current_date += timedelta(days=7 * early_weeks)
+
+    # FAFSA week mid-November (Nov 15)
+    if fafsa_eligible:
+        fafsa_date = datetime(start_date.year, 11, 15)
+        # Only add FAFSA if current_date hasn't passed Nov 15 yet
+        if current_date <= fafsa_date:
+            # Jump current_date to FAFSA date if needed
+            if current_date < fafsa_date:
+                current_date = fafsa_date
+            add_week(["If eligible, fill out FAFSA and CSS Profile"])
+
+    # Regular Decision timeline
+    rd_weeks = 7  # Nov 8 to Jan 1 ish
+    if num_rd > 0:
+        essays_per_week = ceil(num_rd / rd_weeks)
+        rd_start = datetime(start_date.year, 11, 8)
+        current_date = max(current_date, rd_start)
+        for _ in range(rd_weeks - 1):
+            timeline.append({
+                "week_start": current_date,
+                "tasks": [f"Work on approximately {essays_per_week} Regular Decision essays"]
+            })
+            current_date += timedelta(days=7)
+        timeline.append({
+            "week_start": current_date,
+            "tasks": ["Finalize and submit Regular Decision applications"]
+        })
+        current_date += timedelta(days=7)
+
+    # ED2 timeline
+    ed2_weeks = 3
+    if num_ed2 > 0:
+        essays_per_week = ceil(num_ed2 / ed2_weeks)
+        ed2_start = datetime(start_date.year + 1, 1, 8)
+        current_date = max(current_date, ed2_start)
+        for _ in range(ed2_weeks - 1):
+            timeline.append({
+                "week_start": current_date,
+                "tasks": [f"Work on approximately {essays_per_week} Early Decision 2 essays"]
+            })
+            current_date += timedelta(days=7)
+        timeline.append({
+            "week_start": current_date,
+            "tasks": ["Finalize and submit Early Decision 2 applications"]
+        })
+        current_date += timedelta(days=7)
+
+    # Final review week
+    timeline.append({
+        "week_start": current_date,
+        "tasks": ["Final review and submission of any remaining application materials"]
+    })
+
+    # Sort timeline chronologically just in case
+    timeline.sort(key=lambda x: x["week_start"])
+
+# ----------- PDF generation -------------
+
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "College Application Timeline", ln=True, align="C")
+    pdf.ln(10)
+    pdf.set_font("Arial", size=12)
+
+    current_month = ""
+    for entry in timeline:
+        month_name = entry["week_start"].strftime("%B %Y")
+        if month_name != current_month:
+            current_month = month_name
+            pdf.set_font("Arial", "B", 14)
+            pdf.cell(0, 10, current_month, ln=True)
+            pdf.set_font("Arial", size=12)
+        pdf.cell(0, 8, entry["week_start"].strftime("%b %d"), ln=True)
+        for task in entry["tasks"]:
+            pdf.multi_cell(0, 8, f" - {task}")
+        pdf.ln(2)
+
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    pdf_output = io.BytesIO(pdf_bytes)
+    pdf_output.seek(0)
+
+    st.download_button(
+        label="Download Timeline PDF",
+        data=pdf_output,
+        file_name="college_application_timeline.pdf",
+        mime="application/pdf"
+    )
+
+    # Also display in streamlit in text for quick preview
+    for entry in timeline:
+        st.markdown(f"### {entry['week_start'].strftime('%b %d, %Y')}")
+        for task in entry["tasks"]:
+            st.markdown(f"- {task}")
+
+
 # ——— Main App ———
 def main():
     st.markdown("""
@@ -510,7 +648,7 @@ def main():
     </style>
 """, unsafe_allow_html=True)
     
-    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard"])
+    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard", "Essay Timeline Planner"])
 
     with tabs[0]:
         st.markdown("#### Enter your profile (leave filters blank to skip):")
@@ -558,6 +696,21 @@ def main():
 
     with tabs[2]:
         college_list_wizard(df)
+
+    with tabs[3]:
+        st.markdown("### College Application Timeline Planner")
+
+        with st.form("timeline_form"):
+            num_early = st.number_input("Number of Early (REA, EA, ED1) colleges", min_value=0, step=1)
+            num_rd = st.number_input("Number of Regular Decision colleges", min_value=0, step=1)
+            num_ed2 = st.number_input("Number of Early Decision 2 colleges", min_value=0, step=1)
+            fafsa_eligible = st.checkbox("Eligible for FAFSA and CSS Profile")
+            start_date = st.date_input("Start date", value=datetime(2025, 8, 21))
+            submitted = st.form_submit_button("Generate Timeline")
+
+        if submitted:
+            generate_and_render_timeline(num_early, num_rd, num_ed2, start_date, fafsa_eligible)
+                    
 
 if __name__ == "__main__":
     main()
