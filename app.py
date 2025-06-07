@@ -16,6 +16,11 @@ import smtplib
 from email.message import EmailMessage
 from fpdf import FPDF
 from math import ceil
+import spacy
+from io import BytesIO
+from docx import Document
+
+
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
     "a","an","the","and","or","but","if","then","with","on","in",
@@ -595,6 +600,118 @@ def generate_and_render_timeline(num_early, num_rd, num_ed2, start_date, fafsa_e
             st.markdown(f"- {task}")
 
 
+
+
+nlp = spacy.load("en_core_web_sm")
+
+theme_advice = {
+    "belonging": "Talk about communities or spaces where you feel most at home. Think culture, clubs, religion, identity — anything that gives you a sense of place.",
+    "personal identity": "This is your moment to reflect on how your background, experiences, or quirks shape who you are.",
+    "cultural background": "You could reflect on your family traditions, heritage, or values passed down — and how they influence your choices and goals.",
+    "intellectual heritage": "Highlight the ideas, books, or people that shaped your thinking. How do they still echo in what you study or care about today?",
+    "personal growth": "Think about key turning points, setbacks, or revelations that taught you something real. How have you evolved?",
+    "institutional values": "Make sure you understand what the college values — and show how you naturally align with those values, even if indirectly.",
+    "academic opportunities": "This is a great place to name-drop programs, research, professors, or unique classes — show you’ve done your homework!",
+}
+
+def extract_verbs(text):
+    doc = nlp(text.lower())
+    verbs = [token.lemma_ for token in doc if token.pos_ == "VERB"]
+    common_ignore = {"be", "have", "do", "get", "make", "go", "say"}
+    filtered = [v for v in verbs if v not in common_ignore]
+    return list(set(filtered)) if filtered else ["reflect", "discuss"]
+
+def extract_themes(text):
+    doc = nlp(text.lower())
+    noun_chunks = [chunk.text for chunk in doc.noun_chunks if len(chunk.text) > 3]
+    excluded_pos = {"PRON", "DET", "CCONJ", "SCONJ"}
+    filtered_chunks = [chunk for chunk in noun_chunks if all(t.pos_ not in excluded_pos for t in nlp(chunk))]
+    freq = Counter(filtered_chunks)
+    common = [k for k, v in freq.most_common(5)]
+
+    theme_map = {
+        "community": "belonging",
+        "membership": "belonging",
+        "identity": "personal identity",
+        "race": "cultural background",
+        "heritage": "intellectual heritage",
+        "growth": "personal growth",
+        "school": "institutional values",
+        "university": "institutional values",
+        "programs": "academic opportunities",
+        "opportunities": "academic opportunities",
+    }
+    mapped_themes = set()
+    for c in common:
+        added = False
+        for key, val in theme_map.items():
+            if key in c:
+                mapped_themes.add(val)
+                added = True
+                break
+        if not added:
+            mapped_themes.add(c)
+
+    return list(mapped_themes)
+
+def analyze_prompt_nlp(prompt_text, word_limit):
+    cleaned_text = re.sub(r'\s+', ' ', prompt_text.strip())
+    length = len(cleaned_text.split())
+    length_desc = "short" if length < 30 else "detailed"
+
+    verbs = extract_verbs(prompt_text)
+    themes = extract_themes(prompt_text)
+    theme_text = f"**{', '.join(themes)}**" if themes else "broad personal reflection"
+    first_theme = themes[0] if themes else None
+
+    research_keywords = ["why this school", "why our university", "program", "opportunity", "major"]
+    is_research = any(word in prompt_text.lower() for word in research_keywords)
+
+    output = f"""
+
+**Themes & What to Say:**  
+Looks like your prompt touches on: {theme_text}
+
+- Talk about communities or spaces where you feel most at home. Think culture, clubs, religion, identity — anything that gives you a sense of place.  
+- This is your moment to reflect on how your background, experiences, or quirks shape who you are.  
+
+{f'**Start here:** What\u2019s one story that connects you to *{first_theme}*?' if first_theme else ''}
+
+**Reflection Tips:**  
+Think about moments in your life that changed how you see yourself. What sparked growth or gave you clarity?
+
+**Research Tips:**  
+{"This prompt is more about *you* than the school. But make sure your story still fits what the college values." if not is_research else "This prompt mentions the school. Research specific programs, values, or professors to tie your story to."}
+
+**Prompt Length:**  
+It\u2019s {length_desc} ({length} words), so aim for clarity and emotional punch.
+
+**Verbs to Respond To:**  
+The prompt is nudging you to *{', '.join(verbs)}*. Let that guide your structure.
+
+**Word Count Strategy:**  
+~{word_limit} words should give you enough space to be real, but stay focused.
+"""
+
+    return output.strip()
+
+
+def create_docx(prompt_text, essay_text):
+    doc = Document()
+    doc.add_heading("Essay Prompt", level=1)
+    doc.add_paragraph(prompt_text)
+
+    doc.add_paragraph("")  # First line break
+
+    doc.add_heading("Your Essay Draft", level=1)
+    doc.add_paragraph(essay_text)
+
+    # Save to in-memory bytes buffer
+    buffer = BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return buffer
+
 # ——— Main App ———
 def main():
     st.markdown("""
@@ -656,7 +773,7 @@ def main():
     </style>
 """, unsafe_allow_html=True)
     
-    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard", "Essay Timeline Planner"])
+    tabs = st.tabs(["Profile Filter", "Filter by College Acceptances", "College List Wizard", "Essay Timeline Planner", "Prompt Shop - Breakdown Essay Prompts"])
 
     with tabs[0]:
         st.markdown("#### Enter your profile (leave filters blank to skip):")
@@ -718,7 +835,63 @@ def main():
 
         if submitted:
             generate_and_render_timeline(num_early, num_rd, num_ed2, start_date, fafsa_eligible)
-                    
+
+    with tabs[4]:
+        st.markdown("### Prompt Shop — Prompt Breakdown Analyzer")
+
+        # Initialize state variables if not set
+        if 'show_drafting' not in st.session_state:
+            st.session_state['show_drafting'] = False
+        if 'breakdown_text' not in st.session_state:
+            st.session_state['breakdown_text'] = ''
+        if 'prompt_text' not in st.session_state:
+            st.session_state['prompt_text'] = ''
+
+        with st.form("prompt_form"):
+            prompt_text = st.text_area("Paste your essay prompt here", height=150)
+            word_limit = st.number_input("Word count limit", min_value=50, max_value=1000, value=650, step=10)
+            submit_prompt = st.form_submit_button("Analyze Prompt")
+
+        # Handle form submission
+        if submit_prompt:
+            if not prompt_text.strip():
+                st.warning("Please enter an essay prompt to analyze.")
+            else:
+                breakdown = analyze_prompt_nlp(prompt_text, word_limit)
+                st.session_state['breakdown_text'] = breakdown
+                st.session_state['prompt_text'] = prompt_text
+                st.session_state['show_drafting'] = False  # reset in case it's already True
+
+        # Show breakdown if available
+        if st.session_state['breakdown_text']:
+            st.markdown("#### Your Prompt Breakdown:")
+            st.markdown(st.session_state['breakdown_text'], unsafe_allow_html=True)
+
+            # Button to open drafting space — outside form
+            if st.button("📝 Start Drafting"):
+                st.session_state['show_drafting'] = True
+
+        # Show drafting section if toggled on
+        if st.session_state['show_drafting']:
+            st.markdown("## ✍️ Drafting Space")
+            col1, col2 = st.columns([2, 2])
+
+            with col1:
+                st.markdown("### Breakdown Reference")
+                st.markdown(st.session_state['breakdown_text'], unsafe_allow_html=True)
+
+            with col2:
+                essay_text = st.text_area("Your Essay Draft", height=400, key="essay_draft_text")
+
+                if st.button("Download Essay + Breakdown (.docx)"):
+                    docx_buffer = create_docx(st.session_state['prompt_text'], essay_text)
+                    st.download_button(
+                        label="Open Prepared File!",
+                        data=docx_buffer,
+                        file_name="essay_with_breakdown.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    )
+                                    
 
 if __name__ == "__main__":
     main()
