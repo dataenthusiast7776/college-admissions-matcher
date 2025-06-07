@@ -16,7 +16,6 @@ import smtplib
 from email.message import EmailMessage
 from fpdf import FPDF
 from math import ceil
-import spacy
 from io import BytesIO
 from docx import Document
 
@@ -24,13 +23,14 @@ import spacy
 import subprocess
 import importlib.util
 
-# Check if the model is installed
 model_name = "en_core_web_sm"
-if not importlib.util.find_spec(model_name):
-    subprocess.run(["python", "-m", "spacy", "download", model_name])
 
-# Now load the model
-nlp = spacy.load(model_name)
+# Ensure model is installed before loading
+try:
+    nlp = spacy.load(model_name)
+except OSError:
+    subprocess.run(["python", "-m", "spacy", "download", model_name])
+    nlp = spacy.load(model_name)
 
 
 # ——— Stopwords & Keyword Extraction ———
