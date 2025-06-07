@@ -4,3 +4,4 @@ plotly
 reportlab
 FPDF
 spacy
+docx
