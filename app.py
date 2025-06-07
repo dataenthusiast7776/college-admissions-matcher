@@ -20,6 +20,18 @@ import spacy
 from io import BytesIO
 from docx import Document
 
+import spacy
+import subprocess
+import importlib.util
+
+# Check if the model is installed
+model_name = "en_core_web_sm"
+if not importlib.util.find_spec(model_name):
+    subprocess.run(["python", "-m", "spacy", "download", model_name])
+
+# Now load the model
+nlp = spacy.load(model_name)
+
 
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
@@ -600,14 +612,6 @@ def generate_and_render_timeline(num_early, num_rd, num_ed2, start_date, fafsa_e
             st.markdown(f"- {task}")
 
 
-
-
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    import subprocess
-    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-    nlp = spacy.load("en_core_web_sm")
 
 theme_advice = {
     "belonging": "Talk about communities or spaces where you feel most at home. Think culture, clubs, religion, identity — anything that gives you a sense of place.",
