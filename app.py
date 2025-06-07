@@ -16,22 +16,10 @@ import smtplib
 from email.message import EmailMessage
 from fpdf import FPDF
 from math import ceil
+import spacy
 from io import BytesIO
 from docx import Document
 
-import spacy
-import importlib.util
-import subprocess
-import sys
-
-model_name = "en_core_web_sm"
-
-# Check if model is installed
-if importlib.util.find_spec(model_name) is None:
-    subprocess.check_call([sys.executable, "-m", "spacy", "download", model_name])
-
-# NOW load it
-nlp = spacy.load(model_name)
 
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
@@ -613,6 +601,10 @@ def generate_and_render_timeline(num_early, num_rd, num_ed2, start_date, fafsa_e
 
 
 
+
+import re
+from collections import Counter
+
 theme_advice = {
     "belonging": "Talk about communities or spaces where you feel most at home. Think culture, clubs, religion, identity — anything that gives you a sense of place.",
     "personal identity": "This is your moment to reflect on how your background, experiences, or quirks shape who you are.",
@@ -623,21 +615,20 @@ theme_advice = {
     "academic opportunities": "This is a great place to name-drop programs, research, professors, or unique classes — show you’ve done your homework!",
 }
 
+# Use a simple regex + keyword-based approach
 def extract_verbs(text):
-    doc = nlp(text.lower())
-    verbs = [token.lemma_ for token in doc if token.pos_ == "VERB"]
-    common_ignore = {"be", "have", "do", "get", "make", "go", "say"}
-    filtered = [v for v in verbs if v not in common_ignore]
-    return list(set(filtered)) if filtered else ["reflect", "discuss"]
+    verbs_guess = re.findall(r'\b\w+ing\b|\b(to )?\w+\b', text.lower())
+    common_ignore = {"being", "having", "doing", "getting", "making", "going", "saying", "is", "are", "was", "were", "be", "have", "do", "get", "make", "go", "say"}
+    filtered = [v for v in verbs_guess if v not in common_ignore and len(v) > 3]
+    return list(set(filtered))[:5] or ["reflect", "discuss"]
 
 def extract_themes(text):
-    doc = nlp(text.lower())
-    noun_chunks = [chunk.text for chunk in doc.noun_chunks if len(chunk.text) > 3]
-    excluded_pos = {"PRON", "DET", "CCONJ", "SCONJ"}
-    filtered_chunks = [chunk for chunk in noun_chunks if all(t.pos_ not in excluded_pos for t in nlp(chunk))]
-    freq = Counter(filtered_chunks)
-    common = [k for k, v in freq.most_common(5)]
-
+    text = text.lower()
+    keywords = [
+        "community", "membership", "identity", "race", "heritage",
+        "growth", "challenge", "university", "school", "program",
+        "opportunity", "academics", "culture", "tradition"
+    ]
     theme_map = {
         "community": "belonging",
         "membership": "belonging",
@@ -645,23 +636,15 @@ def extract_themes(text):
         "race": "cultural background",
         "heritage": "intellectual heritage",
         "growth": "personal growth",
+        "challenge": "personal growth",
         "school": "institutional values",
         "university": "institutional values",
-        "programs": "academic opportunities",
-        "opportunities": "academic opportunities",
+        "program": "academic opportunities",
+        "opportunity": "academic opportunities",
     }
-    mapped_themes = set()
-    for c in common:
-        added = False
-        for key, val in theme_map.items():
-            if key in c:
-                mapped_themes.add(val)
-                added = True
-                break
-        if not added:
-            mapped_themes.add(c)
 
-    return list(mapped_themes)
+    matched = [theme_map[k] for k in keywords if k in text]
+    return list(set(matched)) or ["personal reflection"]
 
 def analyze_prompt_nlp(prompt_text, word_limit):
     cleaned_text = re.sub(r'\s+', ' ', prompt_text.strip())
@@ -684,7 +667,7 @@ Looks like your prompt touches on: {theme_text}
 - Talk about communities or spaces where you feel most at home. Think culture, clubs, religion, identity — anything that gives you a sense of place.  
 - This is your moment to reflect on how your background, experiences, or quirks shape who you are.  
 
-{f'**Start here:** What\u2019s one story that connects you to *{first_theme}*?' if first_theme else ''}
+{f'**Start here:** What’s one story that connects you to *{first_theme}*?' if first_theme else ''}
 
 **Reflection Tips:**  
 Think about moments in your life that changed how you see yourself. What sparked growth or gave you clarity?
@@ -693,7 +676,7 @@ Think about moments in your life that changed how you see yourself. What sparked
 {"This prompt is more about *you* than the school. But make sure your story still fits what the college values." if not is_research else "This prompt mentions the school. Research specific programs, values, or professors to tie your story to."}
 
 **Prompt Length:**  
-It\u2019s {length_desc} ({length} words), so aim for clarity and emotional punch.
+It’s {length_desc} ({length} words), so aim for clarity and emotional punch.
 
 **Verbs to Respond To:**  
 The prompt is nudging you to *{', '.join(verbs)}*. Let that guide your structure.
