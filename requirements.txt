@@ -4,5 +4,5 @@ plotly
 reportlab
 FPDF
 spacy
-docx
-exceptions
+python-docx
+
