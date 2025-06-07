@@ -602,7 +602,12 @@ def generate_and_render_timeline(num_early, num_rd, num_ed2, start_date, fafsa_e
 
 
 
-nlp = spacy.load("en_core_web_sm")
+try:
+    nlp = spacy.load("en_core_web_sm")
+except OSError:
+    import subprocess
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+    nlp = spacy.load("en_core_web_sm")
 
 theme_advice = {
     "belonging": "Talk about communities or spaces where you feel most at home. Think culture, clubs, religion, identity — anything that gives you a sense of place.",
