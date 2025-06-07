@@ -20,18 +20,18 @@ from io import BytesIO
 from docx import Document
 
 import spacy
-import subprocess
 import importlib.util
+import subprocess
+import sys
 
 model_name = "en_core_web_sm"
 
-# Ensure model is installed before loading
-try:
-    nlp = spacy.load(model_name)
-except OSError:
-    subprocess.run(["python", "-m", "spacy", "download", model_name])
-    nlp = spacy.load(model_name)
+# Check if model is installed
+if importlib.util.find_spec(model_name) is None:
+    subprocess.check_call([sys.executable, "-m", "spacy", "download", model_name])
 
+# NOW load it
+nlp = spacy.load(model_name)
 
 # ——— Stopwords & Keyword Extraction ———
 STOPWORDS = {
