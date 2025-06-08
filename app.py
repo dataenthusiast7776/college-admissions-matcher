@@ -723,7 +723,10 @@ def main():
         </div>
     
         <div style="margin-top: 30px; max-width: 700px; margin-left: auto; margin-right: auto;">
-          <p>I got bored one day, so I wrote a script to mine data off of the r/collegeresults subreddit. Well, one thing turned into another, and I realized I had a treasure trove of data to be put to use. A few days of caffeine-induced coding later, voila! MatchMyApp was born.</p>
+        
+          <p style="font-weight: bold; color: #2c3e50; font-size: 1.2em;">
+            Total number of unique users so far: 553
+          </p>
     
           <p>Whether you're a junior preparing for college applications, a data enthusiast, or a parent looking to see how far your child could go, MatchMyApp has free, data-driven tools for you! Input your stats and see the results of similar past applicants in seconds, or build a targeted college list based on past acceptance data! Or, if you're a data nerd like me, head over to the data corner for an endless array of interesting graphs made from the master dataset.</p>
     
